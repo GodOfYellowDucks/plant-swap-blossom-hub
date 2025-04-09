@@ -1,30 +1,32 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plant } from '@/data/mockData';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
 
 interface PlantCardProps {
-  plant: Plant;
+  plant: any;
 }
 
 const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
-  const { id, name, species, location, imageUrl, type, status } = plant;
+  const { id, name, species, location, image_url, type, status } = plant;
 
   return (
     <Link to={`/plants/${id}`}>
       <Card className="overflow-hidden h-full plant-card-hover bg-white">
         <div className="relative h-48 overflow-hidden">
           <img 
-            src={imageUrl} 
+            src={image_url} 
             alt={name} 
             className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+            onError={(e) => {
+              e.currentTarget.src = '/placeholder.svg';
+            }}
           />
           <div className="absolute top-2 right-2">
             <Badge className="capitalize bg-plant-100 text-plant-800 hover:bg-plant-200">
-              {type}
+              {type || 'Plant'}
             </Badge>
           </div>
           {status !== 'available' && (
@@ -41,7 +43,7 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
         </CardContent>
         <CardFooter className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-600 flex items-center">
           <MapPin className="h-4 w-4 mr-1 text-plant-500" />
-          {location}
+          {location || 'No location'}
         </CardFooter>
       </Card>
     </Link>

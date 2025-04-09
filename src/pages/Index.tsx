@@ -3,24 +3,42 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import PlantGrid from '@/components/PlantGrid';
 import FilterBar from '@/components/FilterBar';
-import { getPlants, Plant } from '@/data/mockData';
 import { Leaf } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
-  const [plants, setPlants] = useState<Plant[]>([]);
-  const [filteredPlants, setFilteredPlants] = useState<Plant[]>([]);
+  const [plants, setPlants] = useState<any[]>([]);
+  const [filteredPlants, setFilteredPlants] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [plantType, setPlantType] = useState('all');
   const [location, setLocation] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load all available plants
-    const loadPlants = () => {
-      const allPlants = getPlants({ status: 'available' });
-      setPlants(allPlants);
-      setFilteredPlants(allPlants);
-      setIsLoading(false);
+    // Load all available plants from Supabase
+    const loadPlants = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('plants')
+          .select('*')
+          .eq('status', 'available');
+        
+        if (error) throw error;
+        
+        setPlants(data || []);
+        setFilteredPlants(data || []);
+      } catch (error) {
+        console.error('Error loading plants:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load plants. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadPlants();
@@ -29,18 +47,35 @@ const Index = () => {
   useEffect(() => {
     // Apply filters
     const applyFilters = () => {
-      let filtered = getPlants({
-        status: 'available',
-        type: plantType !== 'all' ? plantType : undefined,
-        location: location || undefined,
-        search: searchTerm || undefined
-      });
+      let result = [...plants];
       
-      setFilteredPlants(filtered);
+      // Apply search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        result = result.filter(
+          plant => plant.name.toLowerCase().includes(searchLower) ||
+                  plant.species.toLowerCase().includes(searchLower) ||
+                  (plant.description && plant.description.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      // Apply plant type filter
+      if (plantType !== 'all') {
+        result = result.filter(plant => plant.type === plantType);
+      }
+      
+      // Apply location filter
+      if (location) {
+        result = result.filter(
+          plant => plant.location && plant.location.toLowerCase().includes(location.toLowerCase())
+        );
+      }
+      
+      setFilteredPlants(result);
     };
 
     applyFilters();
-  }, [searchTerm, plantType, location]);
+  }, [searchTerm, plantType, location, plants]);
 
   const handleResetFilters = () => {
     setSearchTerm('');

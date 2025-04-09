@@ -5,26 +5,27 @@ import Layout from '@/components/Layout';
 import PlantGrid from '@/components/PlantGrid';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getUserById, getPlants, Plant } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Leaf, 
   MapPin, 
   ArrowLeft, 
-  Plus,
   Clock,
   CheckCheck
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const UserProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
   
   const [user, setUser] = useState<any | null>(null);
-  const [availablePlants, setAvailablePlants] = useState<Plant[]>([]);
-  const [exchangedPlants, setExchangedPlants] = useState<Plant[]>([]);
+  const [availablePlants, setAvailablePlants] = useState<any[]>([]);
+  const [exchangedPlants, setExchangedPlants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -39,24 +40,50 @@ const UserProfile = () => {
         return;
       }
       
-      const userData = getUserById(id);
-      
-      if (userData) {
+      try {
+        // Load user profile
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (userError) throw userError;
         setUser(userData);
         
-        // Load user's plants
-        const userAvailablePlants = getPlants({ ownerId: id, status: 'available' });
-        const userExchangedPlants = getPlants({ ownerId: id, status: 'exchanged' });
+        // Load user's available plants
+        const { data: userAvailablePlants, error: availablePlantsError } = await supabase
+          .from('plants')
+          .select('*')
+          .eq('user_id', id)
+          .eq('status', 'available');
         
-        setAvailablePlants(userAvailablePlants);
-        setExchangedPlants(userExchangedPlants);
+        if (availablePlantsError) throw availablePlantsError;
+        setAvailablePlants(userAvailablePlants || []);
+        
+        // Load user's exchanged plants
+        const { data: userExchangedPlants, error: exchangedPlantsError } = await supabase
+          .from('plants')
+          .select('*')
+          .eq('user_id', id)
+          .eq('status', 'exchanged');
+        
+        if (exchangedPlantsError) throw exchangedPlantsError;
+        setExchangedPlants(userExchangedPlants || []);
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load user profile. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     loadUserAndPlants();
-  }, [id, currentUser, navigate]);
+  }, [id, currentUser, navigate, toast]);
 
   if (isLoading) {
     return (
@@ -102,16 +129,19 @@ const UserProfile = () => {
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex flex-col items-center text-center">
               <img
-                src={user.avatarUrl}
-                alt={user.name}
+                src={user.avatar_url}
+                alt={user.name || user.username || 'User'}
                 className="h-32 w-32 rounded-full object-cover mb-4"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder.svg';
+                }}
               />
-              <h1 className="text-xl font-bold">{user.name}</h1>
+              <h1 className="text-xl font-bold">{user.name || user.username || 'User'}</h1>
               <div className="flex items-center text-gray-600 text-sm mt-1">
                 <MapPin className="h-3 w-3 mr-1" />
-                <span>{user.location}</span>
+                <span>{user.location || 'No location set'}</span>
               </div>
-              <p className="mt-4 text-gray-700">{user.bio}</p>
+              <p className="mt-4 text-gray-700">{user.bio || 'This user has not added a bio yet.'}</p>
             </div>
             
             <Separator className="my-6" />

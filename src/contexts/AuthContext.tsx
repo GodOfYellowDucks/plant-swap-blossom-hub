@@ -17,6 +17,7 @@ type AuthContextType = {
   register: (email: string, password: string, metadata: UserMetadata) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  refreshSession: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType>({
@@ -26,6 +27,7 @@ export const AuthContext = createContext<AuthContextType>({
   register: async () => false,
   logout: async () => {},
   isLoading: true,
+  refreshSession: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,6 +54,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const refreshSession = async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) throw error;
+      
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+    } catch (error: any) {
+      console.error('Error refreshing session:', error);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
@@ -138,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, session, login, register, logout, isLoading, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );

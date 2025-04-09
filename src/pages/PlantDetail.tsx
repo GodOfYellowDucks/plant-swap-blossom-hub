@@ -3,15 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { 
-  getPlantById, 
-  getUserById, 
-  getUserExchanges, 
-  getPlants, 
-  createExchange, 
-  Plant, 
-  Exchange 
-} from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Leaf, 
@@ -39,6 +30,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 const PlantDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,12 +38,12 @@ const PlantDetail = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [plant, setPlant] = useState<Plant | null>(null);
+  const [plant, setPlant] = useState<any | null>(null);
   const [owner, setOwner] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userPlants, setUserPlants] = useState<Plant[]>([]);
+  const [userPlants, setUserPlants] = useState<any[]>([]);
   const [selectedPlants, setSelectedPlants] = useState<string[]>([]);
-  const [existingExchange, setExistingExchange] = useState<Exchange | null>(null);
+  const [existingExchange, setExistingExchange] = useState<any | null>(null);
   const [showExchangeDialog, setShowExchangeDialog] = useState(false);
 
   useEffect(() => {
@@ -59,36 +51,70 @@ const PlantDetail = () => {
 
     const loadPlantAndOwner = async () => {
       setIsLoading(true);
-      const plantData = getPlantById(id);
-      
-      if (plantData) {
+      try {
+        // Fetch plant data
+        const { data: plantData, error: plantError } = await supabase
+          .from('plants')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (plantError) throw plantError;
+        if (!plantData) {
+          setIsLoading(false);
+          return;
+        }
+        
         setPlant(plantData);
-        const ownerData = getUserById(plantData.ownerId);
+        
+        // Fetch owner profile
+        const { data: ownerData, error: ownerError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', plantData.user_id)
+          .single();
+        
+        if (ownerError) throw ownerError;
         setOwner(ownerData);
         
         // Load user's available plants if logged in
         if (user) {
-          const myPlants = getPlants({ ownerId: user.id, status: 'available' });
-          setUserPlants(myPlants);
+          const { data: myPlants, error: myPlantsError } = await supabase
+            .from('plants')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('status', 'available');
+          
+          if (myPlantsError) throw myPlantsError;
+          setUserPlants(myPlants || []);
           
           // Check if there's an existing exchange for this plant
-          const exchanges = getUserExchanges(user.id);
-          const existing = exchanges.find(e => 
-            (e.initiatorId === user.id && e.receiverId === plantData.ownerId && e.requestedPlantIds.includes(id)) || 
-            (e.receiverId === user.id && e.initiatorId === plantData.ownerId && e.offeredPlantIds.includes(id))
-          );
+          const { data: exchanges, error: exchangesError } = await supabase
+            .from('exchange_offers')
+            .select('*')
+            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${plantData.user_id},receiver_plant_id.eq.${id}),and(receiver_id.eq.${user.id},sender_id.eq.${plantData.user_id},sender_plant_id.eq.${id})`)
+            .maybeSingle();
           
-          if (existing) {
-            setExistingExchange(existing);
+          if (exchangesError) throw exchangesError;
+          
+          if (exchanges) {
+            setExistingExchange(exchanges);
           }
         }
+      } catch (error) {
+        console.error('Error loading plant details:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load plant details. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     loadPlantAndOwner();
-  }, [id, user]);
+  }, [id, user, navigate, toast]);
 
   const handlePlantSelection = (plantId: string) => {
     setSelectedPlants(prev => {
@@ -100,7 +126,7 @@ const PlantDetail = () => {
     });
   };
 
-  const handleExchangeRequest = () => {
+  const handleExchangeRequest = async () => {
     if (!user || !plant || !owner) {
       toast({
         title: "Error",
@@ -120,13 +146,32 @@ const PlantDetail = () => {
     }
 
     try {
-      createExchange({
-        initiatorId: user.id,
-        receiverId: plant.ownerId,
-        offeredPlantIds: selectedPlants,
-        requestedPlantIds: [plant.id],
-        status: 'pending'
-      });
+      // Create exchange offer
+      const { data: exchange, error: exchangeError } = await supabase
+        .from('exchange_offers')
+        .insert({
+          sender_id: user.id,
+          receiver_id: plant.user_id,
+          sender_plant_id: selectedPlants[0], // For now, just use the first selected plant
+          receiver_plant_id: plant.id,
+          status: 'pending'
+        })
+        .select()
+        .single();
+      
+      if (exchangeError) throw exchangeError;
+      
+      // Create notification for plant owner
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: plant.user_id,
+          message: `${user.email} wants to exchange their plant for your ${plant.name}.`,
+          related_exchange_id: exchange.id,
+          read: false
+        });
+      
+      if (notificationError) throw notificationError;
 
       toast({
         title: "Exchange Requested",
@@ -137,11 +182,11 @@ const PlantDetail = () => {
       
       // Reload to update state
       navigate(0);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create exchange:', error);
       toast({
         title: "Error",
-        description: "Failed to request exchange. Please try again.",
+        description: error.message || "Failed to request exchange. Please try again.",
         variant: "destructive",
       });
     }
@@ -174,7 +219,7 @@ const PlantDetail = () => {
     );
   }
 
-  const isOwner = user && user.id === plant.ownerId;
+  const isOwner = user && user.id === plant.user_id;
   const canExchange = user && !isOwner && plant.status === 'available';
 
   const formatDate = (dateString: string) => {
@@ -202,9 +247,12 @@ const PlantDetail = () => {
         <div className="md:col-span-2">
           <div className="bg-white rounded-lg overflow-hidden shadow-sm">
             <img
-              src={plant.imageUrl}
+              src={plant.image_url}
               alt={plant.name}
               className="w-full h-auto object-cover aspect-square"
+              onError={(e) => {
+                e.currentTarget.src = '/placeholder.svg';
+              }}
             />
           </div>
         </div>
@@ -234,25 +282,25 @@ const PlantDetail = () => {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="flex items-center text-gray-600">
                 <MapPin className="h-4 w-4 mr-2 text-plant-500" />
-                <span>{plant.location}</span>
+                <span>{plant.location || 'No location'}</span>
               </div>
               <div className="flex items-center text-gray-600">
                 <Calendar className="h-4 w-4 mr-2 text-plant-500" />
-                <span>Listed on {formatDate(plant.createdAt)}</span>
+                <span>Listed on {formatDate(plant.created_at)}</span>
               </div>
               <div className="flex items-center text-gray-600">
                 <UserIcon className="h-4 w-4 mr-2 text-plant-500" />
-                <span>Owned by {owner.name}</span>
+                <span>Owned by {owner.name || owner.username || 'User'}</span>
               </div>
               <div className="flex items-center text-gray-600">
                 <Leaf className="h-4 w-4 mr-2 text-plant-500" />
-                <span className="capitalize">{plant.type}</span>
+                <span className="capitalize">{plant.type || 'Plant'}</span>
               </div>
             </div>
 
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-2">Description</h2>
-              <p className="text-gray-700">{plant.description}</p>
+              <p className="text-gray-700">{plant.description || 'No description provided.'}</p>
             </div>
 
             {/* Exchange Status */}
@@ -275,7 +323,7 @@ const PlantDetail = () => {
             <div className="flex flex-wrap gap-3">
               {isOwner ? (
                 <>
-                  <Button onClick={() => navigate(`/profile/plants/${plant.id}/edit`)} variant="outline">
+                  <Button onClick={() => navigate(`/profile`)} variant="outline">
                     Edit Plant
                   </Button>
                 </>
@@ -300,7 +348,7 @@ const PlantDetail = () => {
                         {userPlants.length === 0 ? (
                           <div className="py-6 text-center">
                             <p className="text-gray-600 mb-4">You don't have any plants available for exchange.</p>
-                            <Button onClick={() => navigate('/profile/plants/new')} variant="outline">
+                            <Button onClick={() => navigate('/profile')} variant="outline">
                               Add a Plant First
                             </Button>
                           </div>
@@ -322,9 +370,12 @@ const PlantDetail = () => {
                                   />
                                   <div className="flex flex-1 items-center space-x-3">
                                     <img
-                                      src={p.imageUrl}
+                                      src={p.image_url}
                                       alt={p.name}
                                       className="h-12 w-12 rounded-md object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.src = '/placeholder.svg';
+                                      }}
                                     />
                                     <Label
                                       htmlFor={`plant-${p.id}`}
@@ -361,7 +412,7 @@ const PlantDetail = () => {
                   )}
                   
                   {existingExchange && existingExchange.status === 'accepted' && (
-                    <Button variant="default" onClick={() => navigate('/profile/exchanges')}>
+                    <Button variant="default" onClick={() => navigate('/profile')}>
                       View Exchange
                     </Button>
                   )}
@@ -376,7 +427,7 @@ const PlantDetail = () => {
                 </Button>
               )}
               
-              <Button variant="ghost" onClick={() => navigate(`/profile/${plant.ownerId}`)}>
+              <Button variant="ghost" onClick={() => navigate(`/profile/${plant.user_id}`)}>
                 View Owner Profile
               </Button>
             </div>
@@ -387,14 +438,17 @@ const PlantDetail = () => {
             <div className="flex items-center">
               <div className="flex-shrink-0 mr-4">
                 <img
-                  src={owner.avatarUrl}
-                  alt={owner.name}
+                  src={owner.avatar_url}
+                  alt={owner.name || 'User'}
                   className="h-16 w-16 rounded-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder.svg';
+                  }}
                 />
               </div>
               <div>
-                <h2 className="text-lg font-semibold">{owner.name}</h2>
-                <p className="text-gray-600 text-sm">{owner.location}</p>
+                <h2 className="text-lg font-semibold">{owner.name || owner.username || 'User'}</h2>
+                <p className="text-gray-600 text-sm">{owner.location || 'No location'}</p>
                 <Button 
                   variant="link" 
                   className="p-0 h-auto text-plant-600 hover:text-plant-700"
@@ -408,7 +462,7 @@ const PlantDetail = () => {
             <Separator className="my-4" />
             
             <p className="text-gray-700 text-sm line-clamp-3">
-              {owner.bio}
+              {owner.bio || 'This user has not added a bio yet.'}
             </p>
           </div>
         </div>
