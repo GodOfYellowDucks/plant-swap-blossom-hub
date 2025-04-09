@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { Leaf, LogIn } from 'lucide-react';
+import { Leaf, UserPlus } from 'lucide-react';
 
-const Login = () => {
+const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,7 +23,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
+      const success = await register(email, password, { username, full_name: name });
       if (success) {
         navigate('/');
       }
@@ -38,9 +40,9 @@ const Login = () => {
             <div className="flex justify-center mb-4">
               <Leaf className="h-12 w-12 text-plant-500" />
             </div>
-            <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your account
+              Join our community and start exchanging plants
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -57,13 +59,31 @@ const Login = () => {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                </div>
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  placeholder="Choose a username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -77,12 +97,12 @@ const Login = () => {
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Logging in...
+                    Creating account...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    <LogIn className="h-4 w-4" />
-                    Log in
+                    <UserPlus className="h-4 w-4" />
+                    Sign Up
                   </span>
                 )}
               </Button>
@@ -90,7 +110,7 @@ const Login = () => {
           </CardContent>
           <CardFooter>
             <p className="text-center text-sm text-gray-600 w-full">
-              Don't have an account? <Link to="/register" className="text-plant-600 hover:text-plant-700 font-medium">Create one</Link>
+              Already have an account? <Link to="/login" className="text-plant-600 hover:text-plant-700 font-medium">Log in</Link>
             </p>
           </CardFooter>
         </Card>
@@ -99,4 +119,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;

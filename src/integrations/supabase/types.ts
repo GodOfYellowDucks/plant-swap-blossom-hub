@@ -9,7 +9,155 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      exchange_offers: {
+        Row: {
+          created_at: string
+          id: string
+          receiver_id: string
+          receiver_plant_id: string
+          sender_id: string
+          sender_plant_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          receiver_id: string
+          receiver_plant_id: string
+          sender_id: string
+          sender_plant_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          receiver_id?: string
+          receiver_plant_id?: string
+          sender_id?: string
+          sender_plant_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exchange_offers_receiver_plant_id_fkey"
+            columns: ["receiver_plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exchange_offers_sender_plant_id_fkey"
+            columns: ["sender_plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean | null
+          related_exchange_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean | null
+          related_exchange_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean | null
+          related_exchange_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_related_exchange_id_fkey"
+            columns: ["related_exchange_id"]
+            isOneToOne: false
+            referencedRelation: "exchange_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plants: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          location: string | null
+          name: string
+          species: string
+          status: string | null
+          subspecies: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          name: string
+          species: string
+          status?: string | null
+          subspecies?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          name?: string
+          species?: string
+          status?: string | null
+          subspecies?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          id: string
+          location: string | null
+          name: string | null
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id: string
+          location?: string | null
+          name?: string | null
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
