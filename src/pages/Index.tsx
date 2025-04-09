@@ -10,7 +10,7 @@ const Index = () => {
   const [plants, setPlants] = useState<Plant[]>([]);
   const [filteredPlants, setFilteredPlants] = useState<Plant[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [plantType, setPlantType] = useState('');
+  const [plantType, setPlantType] = useState('all');
   const [location, setLocation] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,7 +31,7 @@ const Index = () => {
     const applyFilters = () => {
       let filtered = getPlants({
         status: 'available',
-        type: plantType || undefined,
+        type: plantType !== 'all' ? plantType : undefined,
         location: location || undefined,
         search: searchTerm || undefined
       });
@@ -44,7 +44,7 @@ const Index = () => {
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setPlantType('');
+    setPlantType('all');
     setLocation('');
   };
 

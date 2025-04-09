@@ -30,6 +30,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ? getUserNotifications(user.id).filter(n => !n.read).length
     : 0;
 
+  // Get user's initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user || !user.email) return '?';
+    return user.email.charAt(0).toUpperCase();
+  };
+
   return (
     <div className="min-h-screen bg-plant-50 flex flex-col">
       <header className="bg-white shadow-sm">
@@ -85,8 +91,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar>
-                        <AvatarImage src={user.avatarUrl} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src="" alt={user.email || "User"} />
+                        <AvatarFallback>{getUserInitials()}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>

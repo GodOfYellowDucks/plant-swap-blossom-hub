@@ -56,7 +56,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
+              <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="cactus">Cacti</SelectItem>
               <SelectItem value="flower">Flowers</SelectItem>
               <SelectItem value="tree">Trees</SelectItem>
