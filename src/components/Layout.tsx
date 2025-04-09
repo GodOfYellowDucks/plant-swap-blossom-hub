@@ -73,7 +73,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Link>
                 
                 <Link 
-                  to="/notifications" 
+                  to="/profile" 
                   className="relative text-gray-600 hover:text-plant-500 transition-colors"
                 >
                   <Bell className="h-6 w-6" />
@@ -103,7 +103,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <UserIcon className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/profile/plants')}>
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
                       <Leaf className="mr-2 h-4 w-4" />
                       <span>My Plants</span>
                     </DropdownMenuItem>
