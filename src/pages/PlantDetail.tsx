@@ -53,7 +53,7 @@ const PlantDetail = () => {
           .from('plants')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle(); // Changed from single to maybeSingle
         
         if (plantError) throw plantError;
         if (!plantData) {
@@ -68,7 +68,7 @@ const PlantDetail = () => {
           .from('profiles')
           .select('*')
           .eq('id', plantData.user_id)
-          .single();
+          .maybeSingle(); // Changed from single to maybeSingle
         
         if (ownerError) throw ownerError;
         setOwner(ownerData);
@@ -131,13 +131,14 @@ const PlantDetail = () => {
         return;
       }
 
-      // Create exchange offer - User2 will select plants later
+      // Create exchange offer - Use the first available plant as a temporary sender_plant_id
+      // This avoids the not-null constraint error
       const { data: exchange, error: exchangeError } = await supabase
         .from('exchange_offers')
         .insert({
           sender_id: user.id,
           receiver_id: plant.user_id,
-          sender_plant_id: null, // This will be selected by User2 later
+          sender_plant_id: availablePlants[0].id, // Use first available plant to satisfy the constraint
           receiver_plant_id: plant.id,
           status: 'pending',
           selected_plants_ids: null // Will be populated when User2 selects plants
