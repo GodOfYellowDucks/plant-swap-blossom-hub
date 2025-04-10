@@ -42,17 +42,51 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+interface Plant {
+  id: string;
+  name: string;
+  species: string;
+  image_url?: string;
+  user_id: string;
+  status?: string;
+  [key: string]: any;
+}
+
+interface Profile {
+  id: string;
+  username: string;
+  name?: string;
+  avatar_url?: string;
+  [key: string]: any;
+}
+
+interface Exchange {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  sender_plant_id: string;
+  receiver_plant_id: string;
+  status: string;
+  created_at: string;
+  selected_plants_ids: string[] | null;
+  sender_plant?: Plant;
+  receiver_plant?: Plant;
+  sender?: Profile;
+  receiver?: Profile;
+  selected_plants?: Plant[];
+}
+
 const ExchangesPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [sentExchanges, setSentExchanges] = useState<any[]>([]);
-  const [receivedExchanges, setReceivedExchanges] = useState<any[]>([]);
-  const [userPlants, setUserPlants] = useState<any[]>([]);
+  const [sentExchanges, setSentExchanges] = useState<Exchange[]>([]);
+  const [receivedExchanges, setReceivedExchanges] = useState<Exchange[]>([]);
+  const [userPlants, setUserPlants] = useState<Plant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPlants, setSelectedPlants] = useState<string[]>([]);
-  const [currentExchange, setCurrentExchange] = useState<any | null>(null);
+  const [currentExchange, setCurrentExchange] = useState<Exchange | null>(null);
   const [showSelectPlantsDialog, setShowSelectPlantsDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -119,9 +153,10 @@ const ExchangesPage = () => {
           .eq('id', exchange.receiver_id)
           .single();
         
-        exchange.receiver = profile;
-
-        return exchange;
+        return {
+          ...exchange,
+          receiver: profile
+        };
       }));
 
       // Process received exchanges
@@ -133,20 +168,22 @@ const ExchangesPage = () => {
           .eq('id', exchange.sender_id)
           .single();
         
-        exchange.sender = profile;
-
+        let selectedPlants: Plant[] = [];
+        
         // If selected_plants_ids is populated, fetch those plants
         if (exchange.selected_plants_ids && exchange.selected_plants_ids.length > 0) {
-          const { data: selectedPlants } = await supabase
+          const { data: fetchedPlants } = await supabase
             .from('plants')
             .select('*')
             .in('id', exchange.selected_plants_ids);
-          exchange.selected_plants = selectedPlants || [];
-        } else {
-          exchange.selected_plants = [];
+          selectedPlants = fetchedPlants || [];
         }
 
-        return exchange;
+        return {
+          ...exchange,
+          sender: profile,
+          selected_plants: selectedPlants
+        };
       }));
 
       setSentExchanges(processedSent || []);
@@ -409,7 +446,6 @@ const ExchangesPage = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Received Exchanges */}
         <TabsContent value="received">
           {receivedExchanges.length === 0 ? (
             <Card>
@@ -465,7 +501,7 @@ const ExchangesPage = () => {
                         ) : (
                           <div className="space-y-2">
                             {exchange.selected_plants && exchange.selected_plants.length > 0 ? (
-                              exchange.selected_plants.map((plant: any) => (
+                              exchange.selected_plants.map((plant: Plant) => (
                                 <div key={plant.id} className="bg-gray-50 p-3 rounded-md flex items-center">
                                   <img
                                     src={plant.image_url || '/placeholder.svg'}
@@ -546,7 +582,6 @@ const ExchangesPage = () => {
           )}
         </TabsContent>
 
-        {/* Sent Exchanges */}
         <TabsContent value="sent">
           {sentExchanges.length === 0 ? (
             <Card>
@@ -603,7 +638,6 @@ const ExchangesPage = () => {
                         ) : (
                           <div className="space-y-2">
                             {exchange.selected_plants_ids && exchange.selected_plants_ids.length > 0 ? (
-                              // Fetch and display selected plants based on IDs
                               <div className="text-center py-2">
                                 <Button 
                                   variant="outline" 
@@ -680,7 +714,6 @@ const ExchangesPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog for selecting plants */}
       <Dialog open={showSelectPlantsDialog} onOpenChange={setShowSelectPlantsDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -746,7 +779,6 @@ const ExchangesPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for confirming exchange completion */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
