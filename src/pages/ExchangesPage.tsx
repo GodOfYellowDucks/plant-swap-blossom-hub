@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -74,8 +73,7 @@ const ExchangesPage = () => {
         .from('exchange_offers')
         .select(`
           *,
-          receiver_plant:plants!exchange_offers_receiver_plant_id_fkey(*),
-          receiver:profiles!exchange_offers_receiver_id_fkey(*)
+          receiver_plant:plants!exchange_offers_receiver_plant_id_fkey(*)
         `)
         .eq('sender_id', user!.id);
 
@@ -87,7 +85,6 @@ const ExchangesPage = () => {
         .select(`
           *,
           sender_plant:plants!exchange_offers_sender_plant_id_fkey(*),
-          sender:profiles!exchange_offers_sender_id_fkey(*),
           receiver_plant:plants!exchange_offers_receiver_plant_id_fkey(*)
         `)
         .eq('receiver_id', user!.id);
@@ -116,29 +113,27 @@ const ExchangesPage = () => {
         }
         
         // Get receiver profile if missing
-        if (!exchange.receiver) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', exchange.receiver_id)
-            .single();
-          exchange.receiver = profile;
-        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', exchange.receiver_id)
+          .single();
+        
+        exchange.receiver = profile;
 
         return exchange;
       }));
 
       // Process received exchanges
       const processedReceived = await Promise.all((received || []).map(async (exchange) => {
-        // For each received exchange, get the sender's profile if missing
-        if (!exchange.sender) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', exchange.sender_id)
-            .single();
-          exchange.sender = profile;
-        }
+        // For each received exchange, get the sender's profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', exchange.sender_id)
+          .single();
+        
+        exchange.sender = profile;
 
         // If selected_plants_ids is populated, fetch those plants
         if (exchange.selected_plants_ids && exchange.selected_plants_ids.length > 0) {
@@ -371,9 +366,9 @@ const ExchangesPage = () => {
       case 'pending':
         return <Badge variant="secondary" className="capitalize">Pending</Badge>;
       case 'awaiting_confirmation':
-        return <Badge variant="warning" className="capitalize bg-amber-500">Awaiting Confirmation</Badge>;
+        return <Badge variant="outline" className="capitalize bg-amber-500 text-white">Awaiting Confirmation</Badge>;
       case 'completed':
-        return <Badge variant="success" className="capitalize bg-green-500">Completed</Badge>;
+        return <Badge variant="outline" className="capitalize bg-green-500 text-white">Completed</Badge>;
       case 'cancelled':
         return <Badge variant="destructive" className="capitalize">Cancelled</Badge>;
       default:

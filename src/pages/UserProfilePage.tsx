@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -21,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import ProfileEdit from '@/components/ProfileEdit';
 import AddPlantForm from '@/components/AddPlantForm';
+import { supabase } from '@/integrations/supabase/client';
 
 const UserProfilePage = () => {
   const navigate = useNavigate();
@@ -34,7 +34,6 @@ const UserProfilePage = () => {
   const [isAddingPlant, setIsAddingPlant] = useState(false);
   const [pendingExchanges, setPendingExchanges] = useState(0);
   
-  // User profile data 
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
@@ -47,7 +46,6 @@ const UserProfilePage = () => {
       setIsLoading(true);
       
       try {
-        // Fetch user profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -56,7 +54,6 @@ const UserProfilePage = () => {
         
         if (profileError) throw profileError;
         
-        // Fetch user's plants
         const { data: userAvailablePlants, error: plantsError } = await supabase
           .from('plants')
           .select('*')
@@ -73,7 +70,6 @@ const UserProfilePage = () => {
         
         if (exchangedError) throw exchangedError;
         
-        // Fetch user's notifications
         const { data: userNotifications, error: notificationsError } = await supabase
           .from('notifications')
           .select('*')
@@ -82,7 +78,6 @@ const UserProfilePage = () => {
         
         if (notificationsError) throw notificationsError;
         
-        // Check for pending exchanges
         const { data: sentPending, error: sentError } = await supabase
           .from('exchange_offers')
           .select('id')
@@ -152,7 +147,6 @@ const UserProfilePage = () => {
       
       if (error) throw error;
       
-      // Update local state
       setNotifications(notifications.map(n => ({ ...n, read: true })));
       
       toast({
@@ -169,7 +163,6 @@ const UserProfilePage = () => {
     }
   };
 
-  // Get user's initials for avatar fallback
   const getUserInitials = () => {
     if (!user || !user.email) return '?';
     return user.email.charAt(0).toUpperCase();
@@ -193,7 +186,6 @@ const UserProfilePage = () => {
   return (
     <Layout>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-        {/* User Info */}
         <div className="md:col-span-1">
           {isEditing ? (
             <ProfileEdit onCancel={() => setIsEditing(false)} />
@@ -259,7 +251,6 @@ const UserProfilePage = () => {
           )}
         </div>
 
-        {/* Main Content Area */}
         <div className="md:col-span-3">
           {isAddingPlant ? (
             <AddPlantForm 
@@ -286,7 +277,6 @@ const UserProfilePage = () => {
                 </TabsList>
               </div>
 
-              {/* Plants Tab */}
               <TabsContent value="plants" className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold">Your Plants</h2>
@@ -324,7 +314,6 @@ const UserProfilePage = () => {
                 </Tabs>
               </TabsContent>
 
-              {/* Notifications Tab */}
               <TabsContent value="notifications">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Notifications</h2>
@@ -349,7 +338,6 @@ const UserProfilePage = () => {
                   </Card>
                 ) : (
                   <div className="space-y-3">
-                    {/* Welcome notification for newly registered users */}
                     <Card className="bg-plant-50 border-plant-200">
                       <CardHeader className="p-4 pb-2">
                         <CardTitle className="text-sm font-medium flex items-center gap-2">
