@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
@@ -24,10 +25,8 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-const ExchangesPage: React.FC = () => {
+const ExchangesPage = () => {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [plants, setPlants] = useState<Plant[]>([]);
   const [statusFilter, setStatusFilter] = useState<ExchangeStatus | 'all'>('all');
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,7 +40,7 @@ const ExchangesPage: React.FC = () => {
         }
 
         const { data: exchangeData, error: exchangeError } = await supabase
-          .from('exchanges')
+          .from('exchange_offers')
           .select(`
             id, sender_id, receiver_id, sender_plant_id, receiver_plant_id, status, created_at, selected_plants_ids,
             sender_plant:sender_plant_id (id, name, species, image_url, user_id),
@@ -63,7 +62,7 @@ const ExchangesPage: React.FC = () => {
         }
 
         if (exchangeData) {
-          setExchanges(exchangeData);
+          setExchanges(exchangeData as unknown as Exchange[]);
         }
       } catch (error) {
         console.error("Unexpected error fetching exchanges:", error);
