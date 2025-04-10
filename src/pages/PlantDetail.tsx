@@ -161,17 +161,26 @@ const PlantDetail = () => {
       
       if (exchangeError) throw exchangeError;
       
+      // Log exchange data for debugging
+      console.log('Exchange created:', exchange);
+      
       // Create notification for plant owner
-      const { error: notificationError } = await supabase
+      const { data: notification, error: notificationError } = await supabase
         .from('notifications')
         .insert({
           user_id: plant.user_id,
           message: `${user.email} wants to exchange their plant for your ${plant.name}.`,
           related_exchange_id: exchange.id,
           read: false
-        });
+        })
+        .select();
       
-      if (notificationError) throw notificationError;
+      if (notificationError) {
+        console.error('Notification error:', notificationError);
+        throw notificationError;
+      }
+      
+      console.log('Notification created:', notification);
 
       toast({
         title: "Exchange Requested",
