@@ -183,7 +183,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
       <div className="mb-6">
         <p className="text-sm font-medium mb-2">Plant Image</p>
         <div 
-          className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+          className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
             isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300 hover:border-plant-400'
           }`}
           onDragOver={handleDragOver}
@@ -216,8 +216,9 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
           <input 
             type="file" 
             accept="image/*" 
-            className="absolute inset-0 opacity-0 cursor-pointer" 
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             onChange={handleFileSelect}
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       </div>

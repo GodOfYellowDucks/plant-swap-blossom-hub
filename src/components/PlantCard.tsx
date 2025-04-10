@@ -13,11 +13,11 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
   const { id, name, species, location, image_url, type, status } = plant;
 
   return (
-    <Link to={`/plants/${id}`}>
+    <Link to={`/plants/${id}`} className="block h-full">
       <Card className="overflow-hidden h-full plant-card-hover bg-white">
         <div className="relative h-48 overflow-hidden">
           <img 
-            src={image_url} 
+            src={image_url || '/placeholder.svg'} 
             alt={name} 
             className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
             onError={(e) => {
