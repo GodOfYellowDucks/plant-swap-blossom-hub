@@ -26,8 +26,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,8 +39,6 @@ const PlantDetail = () => {
   const [plant, setPlant] = useState<any | null>(null);
   const [owner, setOwner] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userPlants, setUserPlants] = useState<any[]>([]);
-  const [selectedPlants, setSelectedPlants] = useState<string[]>([]);
   const [existingExchange, setExistingExchange] = useState<any | null>(null);
   const [showExchangeDialog, setShowExchangeDialog] = useState(false);
 
@@ -77,18 +73,8 @@ const PlantDetail = () => {
         if (ownerError) throw ownerError;
         setOwner(ownerData);
         
-        // Load user's available plants if logged in
+        // Check if there's an existing exchange for this plant if user is logged in
         if (user) {
-          const { data: myPlants, error: myPlantsError } = await supabase
-            .from('plants')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('status', 'available');
-          
-          if (myPlantsError) throw myPlantsError;
-          setUserPlants(myPlants || []);
-          
-          // Check if there's an existing exchange for this plant
           const { data: exchanges, error: exchangesError } = await supabase
             .from('exchange_offers')
             .select('*')
@@ -116,16 +102,6 @@ const PlantDetail = () => {
     loadPlantAndOwner();
   }, [id, user, navigate, toast]);
 
-  const handlePlantSelection = (plantId: string) => {
-    setSelectedPlants(prev => {
-      if (prev.includes(plantId)) {
-        return prev.filter(id => id !== plantId);
-      } else {
-        return [...prev, plantId];
-      }
-    });
-  };
-
   const handleExchangeRequest = async () => {
     if (!user || !plant || !owner) {
       toast({
@@ -136,32 +112,41 @@ const PlantDetail = () => {
       return;
     }
 
-    if (selectedPlants.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one plant to offer.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      // Create exchange offer
+      // Get available plants from current user to check if they have anything to offer
+      const { data: availablePlants, error: plantsError } = await supabase
+        .from('plants')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'available');
+        
+      if (plantsError) throw plantsError;
+      
+      if (!availablePlants || availablePlants.length === 0) {
+        toast({
+          title: "No Plants Available",
+          description: "You need to add at least one plant to offer an exchange.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create exchange offer - User2 will select plants later
       const { data: exchange, error: exchangeError } = await supabase
         .from('exchange_offers')
         .insert({
           sender_id: user.id,
           receiver_id: plant.user_id,
-          sender_plant_id: selectedPlants[0], // For now, just use the first selected plant
+          sender_plant_id: null, // This will be selected by User2 later
           receiver_plant_id: plant.id,
-          status: 'pending'
+          status: 'pending',
+          selected_plants_ids: null // Will be populated when User2 selects plants
         })
         .select()
         .single();
       
       if (exchangeError) throw exchangeError;
       
-      // Log exchange data for debugging
       console.log('Exchange created:', exchange);
       
       // Create notification for plant owner
@@ -169,7 +154,7 @@ const PlantDetail = () => {
         .from('notifications')
         .insert({
           user_id: plant.user_id,
-          message: `${user.email} wants to exchange their plant for your ${plant.name}.`,
+          message: `${user.email} wants to exchange for your ${plant.name}. Check your exchanges to select plants in return.`,
           related_exchange_id: exchange.id,
           read: false
         })
@@ -184,13 +169,13 @@ const PlantDetail = () => {
 
       toast({
         title: "Exchange Requested",
-        description: "Your exchange request has been sent.",
+        description: "Your exchange request has been sent. The owner will select which of your plants they want in return.",
       });
       
       setShowExchangeDialog(false);
       
-      // Reload to update state
-      navigate(0);
+      // Navigate to the exchanges page
+      navigate('/exchanges');
     } catch (error: any) {
       console.error('Failed to create exchange:', error);
       toast({
@@ -318,7 +303,7 @@ const PlantDetail = () => {
                 <Info className="h-4 w-4" />
                 <AlertDescription>
                   {existingExchange.status === 'pending' ? (
-                    <span>You already have a pending exchange request for this plant.</span>
+                    <span>You already have a pending exchange request for this plant. Check your exchanges page for updates.</span>
                   ) : existingExchange.status === 'accepted' ? (
                     <span>This exchange has been accepted and is waiting for completion.</span>
                   ) : (
@@ -350,63 +335,16 @@ const PlantDetail = () => {
                         <DialogHeader>
                           <DialogTitle>Offer an Exchange</DialogTitle>
                           <DialogDescription>
-                            Select one or more of your plants to offer in exchange for {plant.name}.
+                            Would you like to offer an exchange for {plant.name}? The owner will be able to select which of your plants they want in return.
                           </DialogDescription>
                         </DialogHeader>
                         
-                        {userPlants.length === 0 ? (
-                          <div className="py-6 text-center">
-                            <p className="text-gray-600 mb-4">You don't have any plants available for exchange.</p>
-                            <Button onClick={() => navigate('/profile')} variant="outline">
-                              Add a Plant First
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="grid gap-4 py-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="font-medium">Your Plants</h3>
-                              <span className="text-sm text-gray-500">
-                                Selected: {selectedPlants.length}/{userPlants.length}
-                              </span>
-                            </div>
-                            <div className="max-h-[300px] overflow-y-auto">
-                              {userPlants.map((p) => (
-                                <div key={p.id} className="flex items-center space-x-3 mb-4">
-                                  <Checkbox
-                                    id={`plant-${p.id}`}
-                                    checked={selectedPlants.includes(p.id)}
-                                    onCheckedChange={() => handlePlantSelection(p.id)}
-                                  />
-                                  <div className="flex flex-1 items-center space-x-3">
-                                    <img
-                                      src={p.image_url}
-                                      alt={p.name}
-                                      className="h-12 w-12 rounded-md object-cover"
-                                      onError={(e) => {
-                                        e.currentTarget.src = '/placeholder.svg';
-                                      }}
-                                    />
-                                    <Label
-                                      htmlFor={`plant-${p.id}`}
-                                      className="flex-1 cursor-pointer"
-                                    >
-                                      <div className="font-medium">{p.name}</div>
-                                      <div className="text-xs text-gray-500">{p.species}</div>
-                                    </Label>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        <DialogFooter>
+                        <DialogFooter className="mt-4">
                           <Button
-                            disabled={selectedPlants.length === 0 || userPlants.length === 0}
                             onClick={handleExchangeRequest}
                             className="bg-plant-500 hover:bg-plant-600"
                           >
-                            Send Exchange Offer
+                            Send Exchange Request
                           </Button>
                         </DialogFooter>
                       </DialogContent>
@@ -421,7 +359,7 @@ const PlantDetail = () => {
                   )}
                   
                   {existingExchange && existingExchange.status === 'accepted' && (
-                    <Button variant="default" onClick={() => navigate('/profile')}>
+                    <Button variant="default" onClick={() => navigate('/exchanges')}>
                       View Exchange
                     </Button>
                   )}

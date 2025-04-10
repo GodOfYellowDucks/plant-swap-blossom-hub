@@ -1,9 +1,11 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin } from 'lucide-react';
+import { MapPin, Repeat } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PlantCardProps {
   plant: any;
@@ -11,10 +13,25 @@ interface PlantCardProps {
 
 const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
   const { id, name, species, location, image_url, type, status } = plant;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleExchangeClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // If this is the user's own plant, navigate to exchanges
+    if (user && user.id === plant.user_id) {
+      navigate('/exchanges');
+    } else {
+      // Otherwise, navigate to the plant detail page
+      navigate(`/plants/${id}`);
+    }
+  };
 
   return (
     <Link to={`/plants/${id}`} className="block h-full">
-      <Card className="overflow-hidden h-full plant-card-hover bg-white">
+      <Card className="overflow-hidden h-full plant-card-hover bg-white relative">
         <div className="relative h-48 overflow-hidden">
           <img 
             src={image_url || '/placeholder.svg'} 
@@ -34,6 +51,21 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
               <Badge variant={status === 'exchanged' ? 'destructive' : 'secondary'} className="capitalize">
                 {status}
               </Badge>
+            </div>
+          )}
+          
+          {/* Show exchange button for own plants that are part of an exchange */}
+          {user && user.id === plant.user_id && status === 'pending' && (
+            <div className="absolute bottom-2 right-2">
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                className="bg-plant-500 hover:bg-plant-600 text-white p-1 h-8" 
+                onClick={handleExchangeClick}
+              >
+                <Repeat className="h-4 w-4 mr-1" />
+                View Exchange
+              </Button>
             </div>
           )}
         </div>

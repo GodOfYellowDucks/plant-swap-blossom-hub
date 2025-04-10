@@ -15,6 +15,7 @@ export type Database = {
           id: string
           receiver_id: string
           receiver_plant_id: string
+          selected_plants_ids: string[] | null
           sender_id: string
           sender_plant_id: string
           status: string | null
@@ -24,6 +25,7 @@ export type Database = {
           id?: string
           receiver_id: string
           receiver_plant_id: string
+          selected_plants_ids?: string[] | null
           sender_id: string
           sender_plant_id: string
           status?: string | null
@@ -33,6 +35,7 @@ export type Database = {
           id?: string
           receiver_id?: string
           receiver_plant_id?: string
+          selected_plants_ids?: string[] | null
           sender_id?: string
           sender_plant_id?: string
           status?: string | null

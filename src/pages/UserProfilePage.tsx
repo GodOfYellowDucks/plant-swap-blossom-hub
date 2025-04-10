@@ -6,7 +6,6 @@ import PlantGrid from '@/components/PlantGrid';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { 
   Bell,
   Leaf, 
@@ -14,7 +13,8 @@ import {
   Plus,
   Clock,
   CheckCheck,
-  Settings
+  Settings,
+  Repeat
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +32,7 @@ const UserProfilePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingPlant, setIsAddingPlant] = useState(false);
+  const [pendingExchanges, setPendingExchanges] = useState(0);
   
   // User profile data 
   const [profile, setProfile] = useState<any>(null);
@@ -81,10 +82,41 @@ const UserProfilePage = () => {
         
         if (notificationsError) throw notificationsError;
         
+        // Check for pending exchanges
+        const { data: sentPending, error: sentError } = await supabase
+          .from('exchange_offers')
+          .select('id')
+          .eq('sender_id', user.id)
+          .eq('status', 'pending');
+          
+        if (sentError) throw sentError;
+        
+        const { data: receivedPending, error: receivedError } = await supabase
+          .from('exchange_offers')
+          .select('id')
+          .eq('receiver_id', user.id)
+          .eq('status', 'pending');
+          
+        if (receivedError) throw receivedError;
+        
+        const { data: awaitingConfirmation, error: awaitingError } = await supabase
+          .from('exchange_offers')
+          .select('id')
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+          .eq('status', 'awaiting_confirmation');
+          
+        if (awaitingError) throw awaitingError;
+        
+        const totalPendingExchanges = 
+          (sentPending?.length || 0) + 
+          (receivedPending?.length || 0) + 
+          (awaitingConfirmation?.length || 0);
+        
         setProfile(profileData);
         setAvailablePlants(userAvailablePlants || []);
         setExchangedPlants(userExchangedPlants || []);
         setNotifications(userNotifications || []);
+        setPendingExchanges(totalPendingExchanges);
       } catch (error) {
         console.error('Error loading user data:', error);
         toast({
@@ -183,15 +215,32 @@ const UserProfilePage = () => {
                 </div>
                 <p className="mt-4 text-gray-700">{profile?.bio || 'Welcome to your profile! You can add your bio by editing your profile.'}</p>
                 
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-4 text-xs gap-1"
-                  onClick={handleEditProfile}
-                >
-                  <Settings className="h-3 w-3" /> 
-                  Edit Profile
-                </Button>
+                <div className="flex gap-2 mt-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs gap-1"
+                    onClick={handleEditProfile}
+                  >
+                    <Settings className="h-3 w-3" /> 
+                    Edit Profile
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs gap-1 relative"
+                    onClick={() => navigate('/exchanges')}
+                  >
+                    <Repeat className="h-3 w-3" /> 
+                    Exchanges
+                    {pendingExchanges > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        {pendingExchanges}
+                      </span>
+                    )}
+                  </Button>
+                </div>
               </div>
               
               <Separator className="my-6" />
