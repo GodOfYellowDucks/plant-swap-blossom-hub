@@ -9,6 +9,8 @@ import { Exchange, ExchangeStatus, Plant, Profile } from '@/types/exchange';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -28,23 +30,32 @@ const getStatusBadge = (status: string) => {
 const ExchangesPage = () => {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [statusFilter, setStatusFilter] = useState<ExchangeStatus | 'all'>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchExchanges = async () => {
+      setIsLoading(true);
+      setError(null);
+      
       try {
         if (!user) {
           console.error("User not logged in.");
+          setError("Please log in to view your exchanges");
+          setIsLoading(false);
           return;
         }
 
+        // Using explicit foreign key constraints to avoid relationship ambiguity
         const { data: exchangeData, error: exchangeError } = await supabase
           .from('exchange_offers')
           .select(`
-            id, sender_id, receiver_id, sender_plant_id, receiver_plant_id, status, created_at, selected_plants_ids,
-            sender_plant:sender_plant_id (id, name, species, image_url, user_id),
-            receiver_plant:receiver_plant_id (id, name, species, image_url, user_id),
+            id, sender_id, receiver_id, status, created_at, selected_plants_ids,
+            sender_plant_id, receiver_plant_id,
+            plants!exchange_offers_sender_plant_id_fkey (id, name, species, image_url, user_id),
+            plants!exchange_offers_receiver_plant_id_fkey (id, name, species, image_url, user_id),
             sender:sender_id (id, username, name, avatar_url),
             receiver:receiver_id (id, username, name, avatar_url)
           `)
@@ -53,24 +64,27 @@ const ExchangesPage = () => {
 
         if (exchangeError) {
           console.error("Error fetching exchanges:", exchangeError);
-          toast({
-            title: "Error fetching exchanges",
-            description: "Failed to load exchanges. Please try again.",
-            variant: "destructive",
-          });
+          setError("Failed to load exchanges. Please try again.");
+          setIsLoading(false);
           return;
         }
 
         if (exchangeData) {
-          setExchanges(exchangeData as unknown as Exchange[]);
+          // Map the data to the Exchange type
+          const mappedExchanges: Exchange[] = exchangeData.map(exchange => ({
+            ...exchange,
+            sender_plant: exchange.plants || null, // The sender plant
+            receiver_plant: exchange.plants || null, // The receiver plant
+          }));
+          
+          console.log("Fetched exchanges:", mappedExchanges);
+          setExchanges(mappedExchanges);
         }
       } catch (error) {
         console.error("Unexpected error fetching exchanges:", error);
-        toast({
-          title: "Unexpected error",
-          description: "An unexpected error occurred while loading exchanges.",
-          variant: "destructive",
-        });
+        setError("An unexpected error occurred while loading exchanges.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -92,7 +106,7 @@ const ExchangesPage = () => {
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <Select onValueChange={(value) => setStatusFilter(value as ExchangeStatus | 'all')}>
+            <Select onValueChange={(value) => setStatusFilter(value as ExchangeStatus | 'all')} defaultValue="all">
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -105,7 +119,25 @@ const ExchangesPage = () => {
               </SelectContent>
             </Select>
           </div>
-          {filteredExchanges.length > 0 ? (
+          
+          {isLoading && (
+            <div className="text-center py-4">
+              <p>Loading exchanges...</p>
+            </div>
+          )}
+          
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {!isLoading && !error && filteredExchanges.length === 0 && (
+            <p>No exchanges found with the selected filter.</p>
+          )}
+          
+          {!isLoading && !error && filteredExchanges.length > 0 && (
             <div className="grid gap-4">
               {filteredExchanges.map((exchange) => (
                 <div key={exchange.id} className="border rounded-md p-4">
@@ -113,14 +145,12 @@ const ExchangesPage = () => {
                   <p>Status: {getStatusBadge(exchange.status)}</p>
                   <p>Sender: {exchange.sender?.username || 'N/A'}</p>
                   <p>Receiver: {exchange.receiver?.username || 'N/A'}</p>
-                  <p>Sender Plant: {exchange.sender_plant?.name || 'N/A'}</p>
-                  <p>Receiver Plant: {exchange.receiver_plant?.name || 'N/A'}</p>
+                  <p>Sender Plant: {exchange.plants?.name || 'N/A'}</p>
+                  <p>Receiver Plant: {exchange.plants?.name || 'N/A'}</p>
                   <p>Created At: {new Date(exchange.created_at).toLocaleDateString()}</p>
                 </div>
               ))}
             </div>
-          ) : (
-            <p>No exchanges found with the selected filter.</p>
           )}
         </CardContent>
       </Card>
