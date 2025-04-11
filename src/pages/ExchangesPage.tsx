@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
@@ -26,13 +27,13 @@ import {
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'pending':
-      return <Badge variant="secondary" className="capitalize flex gap-1 items-center"><Clock className="h-3 w-3" /> Pending</Badge>;
+      return <Badge variant="secondary" className="capitalize flex gap-1 items-center"><Clock className="h-3 w-3" /> Ожидает</Badge>;
     case 'awaiting_confirmation':
-      return <Badge variant="outline" className="capitalize bg-amber-500 text-white flex gap-1 items-center"><ArrowLeftRight className="h-3 w-3" /> Awaiting Confirmation</Badge>;
+      return <Badge variant="outline" className="capitalize bg-amber-500 text-white flex gap-1 items-center"><ArrowLeftRight className="h-3 w-3" /> Ожидает подтверждения</Badge>;
     case 'completed':
-      return <Badge variant="outline" className="capitalize bg-green-500 text-white flex gap-1 items-center"><CheckCheck className="h-3 w-3" /> Completed</Badge>;
+      return <Badge variant="outline" className="capitalize bg-green-500 text-white flex gap-1 items-center"><CheckCheck className="h-3 w-3" /> Завершено</Badge>;
     case 'cancelled':
-      return <Badge variant="destructive" className="capitalize flex gap-1 items-center"><X className="h-3 w-3" /> Cancelled</Badge>;
+      return <Badge variant="destructive" className="capitalize flex gap-1 items-center"><X className="h-3 w-3" /> Отменено</Badge>;
     default:
       return <Badge className="capitalize">{status}</Badge>;
   }
@@ -55,7 +56,7 @@ const ExchangesPage = () => {
     
     try {
       if (!user) {
-        setError("Please log in to view your exchanges");
+        setError("Пожалуйста, войдите в систему, чтобы просмотреть ваши обмены");
         setIsLoading(false);
         return;
       }
@@ -80,7 +81,7 @@ const ExchangesPage = () => {
 
       if (exchangeError) {
         console.error("Error fetching exchanges:", exchangeError);
-        setError("Failed to load exchanges. Please try again.");
+        setError("Не удалось загрузить обмены. Пожалуйста, попробуйте снова.");
         setIsLoading(false);
         return;
       }
@@ -153,14 +154,14 @@ const ExchangesPage = () => {
         // Default values in case of errors
         const defaultPlant: Plant = {
           id: 'unknown',
-          name: 'Unknown Plant',
-          species: 'Unknown Species',
+          name: 'Неизвестное растение',
+          species: 'Неизвестный вид',
           user_id: 'unknown',
         };
         
         const defaultProfile: Profile = {
           id: 'unknown',
-          username: 'Unknown User',
+          username: 'Неизвестный пользователь',
         };
         
         // Create complete exchange object
@@ -187,7 +188,7 @@ const ExchangesPage = () => {
       setExchanges(completeExchanges);
     } catch (error) {
       console.error("Unexpected error fetching exchanges:", error);
-      setError("An unexpected error occurred while loading exchanges.");
+      setError("Произошла непредвиденная ошибка при загрузке обменов.");
     } finally {
       setIsLoading(false);
     }
@@ -208,8 +209,8 @@ const ExchangesPage = () => {
       if (error) {
         console.error("Error fetching available plants:", error);
         toast({
-          title: "Error",
-          description: "Failed to load available plants. Please try again.",
+          title: "Ошибка",
+          description: "Не удалось загрузить доступные растения. Пожалуйста, попробуйте снова.",
           variant: "destructive",
         });
         return [];
@@ -254,16 +255,16 @@ const ExchangesPage = () => {
       if (error) {
         console.error("Error updating exchange:", error);
         toast({
-          title: "Error",
-          description: "Failed to update exchange. Please try again.",
+          title: "Ошибка",
+          description: "Не удалось обновить обмен. Пожалуйста, попробуйте снова.",
           variant: "destructive",
         });
         return;
       }
       
       toast({
-        title: "Success",
-        description: "Plants selected for exchange successfully.",
+        title: "Успех",
+        description: "Растения для обмена выбраны успешно.",
       });
       
       setSelectingFor(null);
@@ -271,8 +272,8 @@ const ExchangesPage = () => {
     } catch (error) {
       console.error("Unexpected error updating exchange:", error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Ошибка",
+        description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
     }
@@ -291,8 +292,8 @@ const ExchangesPage = () => {
       if (error) {
         console.error("Error confirming exchange:", error);
         toast({
-          title: "Error",
-          description: "Failed to confirm exchange. Please try again.",
+          title: "Ошибка",
+          description: "Не удалось подтвердить обмен. Пожалуйста, попробуйте снова.",
           variant: "destructive",
         });
         return;
@@ -313,16 +314,16 @@ const ExchangesPage = () => {
       }
       
       toast({
-        title: "Success",
-        description: "Exchange confirmed successfully!",
+        title: "Успех",
+        description: "Обмен подтвержден успешно!",
       });
       
       fetchExchanges();
     } catch (error) {
       console.error("Unexpected error confirming exchange:", error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Ошибка",
+        description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
     }
@@ -330,6 +331,7 @@ const ExchangesPage = () => {
 
   const handleCancelExchange = async (exchangeId: string) => {
     try {
+      // We need to explicitly specify the status value to avoid constraint issues
       const { error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
@@ -338,24 +340,24 @@ const ExchangesPage = () => {
       if (error) {
         console.error("Error cancelling exchange:", error);
         toast({
-          title: "Error",
-          description: "Failed to cancel exchange. Please try again.",
+          title: "Ошибка",
+          description: "Не удалось отменить обмен. Пожалуйста, попробуйте снова.",
           variant: "destructive",
         });
         return;
       }
       
       toast({
-        title: "Exchange Cancelled",
-        description: "The exchange has been cancelled.",
+        title: "Обмен отменен",
+        description: "Обмен был отменен.",
       });
       
       fetchExchanges();
     } catch (error) {
       console.error("Unexpected error cancelling exchange:", error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Ошибка",
+        description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
     }
@@ -369,30 +371,30 @@ const ExchangesPage = () => {
     <Layout>
       <Card>
         <CardHeader>
-          <CardTitle>Plant Exchanges</CardTitle>
+          <CardTitle>Обмен растениями</CardTitle>
           <p className="text-sm text-muted-foreground">
-            View and manage your plant exchange requests.
+            Просмотр и управление вашими запросами на обмен растениями.
           </p>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <Select onValueChange={(value) => setStatusFilter(value as ExchangeStatus | 'all')} defaultValue="all">
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder="Фильтровать по статусу" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="awaiting_confirmation">Awaiting Confirmation</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">Все</SelectItem>
+                <SelectItem value="pending">Ожидает</SelectItem>
+                <SelectItem value="awaiting_confirmation">Ожидает подтверждения</SelectItem>
+                <SelectItem value="completed">Завершено</SelectItem>
+                <SelectItem value="cancelled">Отменено</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           {isLoading && (
             <div className="text-center py-4">
-              <p>Loading exchanges...</p>
+              <p>Загрузка обменов...</p>
             </div>
           )}
           
@@ -406,7 +408,7 @@ const ExchangesPage = () => {
           {!isLoading && !error && filteredExchanges.length === 0 && (
             <div className="text-center py-8">
               <Leaf className="h-12 w-12 mx-auto text-muted-foreground" />
-              <p className="mt-4">No exchanges found with the selected filter.</p>
+              <p className="mt-4">Обмены с выбранным фильтром не найдены.</p>
             </div>
           )}
           
@@ -442,20 +444,20 @@ const ExchangesPage = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium">Sender:</span> 
-                          <span>{exchange.sender?.username || 'N/A'}</span>
+                          <span className="font-medium">Отправитель:</span> 
+                          <span>{exchange.sender?.username || 'Н/Д'}</span>
                         </div>
                         
                         <div className="flex items-center gap-2">
                           <Leaf className="h-4 w-4 text-green-600" />
-                          <span className="font-medium">Offering:</span>
-                          <span>{exchange.sender_plant?.name || 'N/A'}</span>
-                          <span className="text-xs text-muted-foreground">({exchange.sender_plant?.species || 'Unknown species'})</span>
+                          <span className="font-medium">Предлагает:</span>
+                          <span>{exchange.sender_plant?.name || 'Н/Д'}</span>
+                          <span className="text-xs text-muted-foreground">({exchange.sender_plant?.species || 'Неизвестный вид'})</span>
                         </div>
                         
                         {exchange.selected_plants && exchange.selected_plants.length > 0 && (
                           <div className="mt-2">
-                            <p className="font-medium mb-1">Selected plants:</p>
+                            <p className="font-medium mb-1">Выбранные растения:</p>
                             <ul className="pl-5 list-disc space-y-1">
                               {exchange.selected_plants.map(plant => (
                                 <li key={plant.id} className="text-sm">
@@ -470,15 +472,15 @@ const ExchangesPage = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-purple-600" />
-                          <span className="font-medium">Receiver:</span> 
-                          <span>{exchange.receiver?.username || 'N/A'}</span>
+                          <span className="font-medium">Получатель:</span> 
+                          <span>{exchange.receiver?.username || 'Н/Д'}</span>
                         </div>
                         
                         <div className="flex items-center gap-2">
                           <Leaf className="h-4 w-4 text-green-600" />
-                          <span className="font-medium">Requesting:</span>
-                          <span>{exchange.receiver_plant?.name || 'N/A'}</span>
-                          <span className="text-xs text-muted-foreground">({exchange.receiver_plant?.species || 'Unknown species'})</span>
+                          <span className="font-medium">Запрашивает:</span>
+                          <span>{exchange.receiver_plant?.name || 'Н/Д'}</span>
+                          <span className="text-xs text-muted-foreground">({exchange.receiver_plant?.species || 'Неизвестный вид'})</span>
                         </div>
                       </div>
                     </div>
@@ -490,14 +492,14 @@ const ExchangesPage = () => {
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" onClick={() => handleSelectPlants(exchange.id, exchange.sender_id)}>
-                            Select Plants
+                            Выбрать растения
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-80">
                           <div className="space-y-4">
-                            <h4 className="font-medium">Select plants from {exchange.sender?.username}</h4>
+                            <h4 className="font-medium">Выберите растения от {exchange.sender?.username}</h4>
                             {availablePlants.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">No available plants found.</p>
+                              <p className="text-sm text-muted-foreground">Доступных растений не найдено.</p>
                             ) : (
                               <div className="space-y-2 max-h-60 overflow-y-auto">
                                 {availablePlants.map(plant => (
@@ -521,14 +523,14 @@ const ExchangesPage = () => {
                                 size="sm" 
                                 onClick={() => setSelectingFor(null)}
                               >
-                                Cancel
+                                Отмена
                               </Button>
                               <Button 
                                 size="sm" 
                                 onClick={handleSubmitSelection}
                                 disabled={selectedPlants.length === 0}
                               >
-                                Submit
+                                Отправить
                               </Button>
                             </div>
                           </div>
@@ -539,14 +541,14 @@ const ExchangesPage = () => {
                     {/* Confirm exchange button - visible to both parties when status is awaiting_confirmation */}
                     {user && exchange.status === 'awaiting_confirmation' && (
                       <Button size="sm" onClick={() => handleConfirmExchange(exchange.id)} className="gap-1">
-                        <Check className="h-4 w-4" /> Confirm Exchange
+                        <Check className="h-4 w-4" /> Подтвердить обмен
                       </Button>
                     )}
                     
                     {/* Cancel button - visible for pending and awaiting_confirmation states */}
                     {user && ['pending', 'awaiting_confirmation'].includes(exchange.status) && (
                       <Button variant="destructive" size="sm" onClick={() => handleCancelExchange(exchange.id)} className="gap-1">
-                        <X className="h-4 w-4" /> Cancel
+                        <X className="h-4 w-4" /> Отменить
                       </Button>
                     )}
                   </CardFooter>
