@@ -1,10 +1,10 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface PlantCardProps {
@@ -20,12 +20,25 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // If this is the user's own plant, navigate to exchanges
+    // Если это собственное растение пользователя, переходим к обменам
     if (user && user.id === plant.user_id) {
       navigate('/exchanges');
     } else {
-      // Otherwise, navigate to the plant detail page
+      // В противном случае переходим на страницу растения
       navigate(`/plants/${id}`);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'available':
+        return <Badge className="capitalize bg-plant-100 text-plant-800 hover:bg-plant-200">Доступно</Badge>;
+      case 'exchanged':
+        return <Badge variant="destructive" className="capitalize">Обменено</Badge>;
+      case 'pending':
+        return <Badge variant="secondary" className="capitalize">Ожидает</Badge>;
+      default:
+        return <Badge className="capitalize">{status}</Badge>;
     }
   };
 
@@ -38,23 +51,21 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
             alt={name} 
             className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
             onError={(e) => {
-              e.currentTarget.src = '/placeholder.svg';
+              (e.currentTarget as HTMLImageElement).src = '/placeholder.svg';
             }}
           />
           <div className="absolute top-2 right-2">
             <Badge className="capitalize bg-plant-100 text-plant-800 hover:bg-plant-200">
-              {type || 'Plant'}
+              {type || 'Растение'}
             </Badge>
           </div>
           {status !== 'available' && (
             <div className="absolute top-2 left-2">
-              <Badge variant={status === 'exchanged' ? 'destructive' : 'secondary'} className="capitalize">
-                {status}
-              </Badge>
+              {getStatusBadge(status)}
             </div>
           )}
           
-          {/* Show exchange button for own plants that are part of an exchange */}
+          {/* Показать кнопку обмена для собственных растений, которые участвуют в обмене */}
           {user && user.id === plant.user_id && status === 'pending' && (
             <div className="absolute bottom-2 right-2">
               <Button 
@@ -64,7 +75,7 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
                 onClick={handleExchangeClick}
               >
                 <Repeat className="h-4 w-4 mr-1" />
-                View Exchange
+                Просмотр обмена
               </Button>
             </div>
           )}
@@ -75,7 +86,7 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
         </CardContent>
         <CardFooter className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-600 flex items-center">
           <MapPin className="h-4 w-4 mr-1 text-plant-500" />
-          {location || 'No location'}
+          {location || 'Нет местоположения'}
         </CardFooter>
       </Card>
     </Link>

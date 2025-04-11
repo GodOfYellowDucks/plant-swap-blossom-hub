@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 
-// Pages
+// Страницы
 import Index from "./pages/Index";
 import PlantDetail from "./pages/PlantDetail";
 import Login from "./pages/Login";
@@ -33,7 +33,7 @@ const App = () => (
             <Route path="/profile/:id" element={<UserProfile />} />
             <Route path="/profile" element={<UserProfilePage />} />
             <Route path="/exchanges" element={<ExchangesPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* ДОБАВЛЯЙТЕ ВСЕ ПОЛЬЗОВАТЕЛЬСКИЕ МАРШРУТЫ ВЫШЕ МАРШРУТА-ПЕРЕХВАТЧИКА "*" */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

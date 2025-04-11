@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   AlertCircle, 
   Clock, 
-  Leaf, // Changed from Plant to Leaf which exists in lucide-react
+  Leaf,
   User, 
   Calendar, 
   CheckCheck, 
@@ -61,9 +61,9 @@ const ExchangesPage = () => {
         return;
       }
 
-      console.log("Fetching exchanges for user:", user.id);
+      console.log("Получение обменов для пользователя:", user.id);
 
-      // First fetch the exchange offers
+      // Сначала получаем предложения обмена
       const { data: exchangeData, error: exchangeError } = await supabase
         .from('exchange_offers')
         .select(`
@@ -80,25 +80,25 @@ const ExchangesPage = () => {
         .order('created_at', { ascending: false });
 
       if (exchangeError) {
-        console.error("Error fetching exchanges:", exchangeError);
+        console.error("Ошибка при получении обменов:", exchangeError);
         setError("Не удалось загрузить обмены. Пожалуйста, попробуйте снова.");
         setIsLoading(false);
         return;
       }
 
       if (!exchangeData || exchangeData.length === 0) {
-        console.log("No exchanges found");
+        console.log("Обмены не найдены");
         setExchanges([]);
         setIsLoading(false);
         return;
       }
 
-      console.log("Raw exchange data:", exchangeData);
+      console.log("Исходные данные обмена:", exchangeData);
       
-      // Create array to hold complete exchange objects
+      // Создаем массив для хранения полных объектов обмена
       const completeExchanges: Exchange[] = [];
       
-      // Process each exchange to get related data
+      // Обрабатываем каждый обмен для получения связанных данных
       for (const exchange of exchangeData) {
         let status: ExchangeStatus = 'pending';
         if (exchange.status === 'pending' || 
@@ -108,35 +108,35 @@ const ExchangesPage = () => {
           status = exchange.status as ExchangeStatus;
         }
         
-        // Fetch sender plant data
+        // Получаем данные о растении отправителя
         const { data: senderPlantData, error: senderPlantError } = await supabase
           .from('plants')
           .select('*')
           .eq('id', exchange.sender_plant_id)
           .single();
         
-        // Fetch receiver plant data  
+        // Получаем данные о растении получателя
         const { data: receiverPlantData, error: receiverPlantError } = await supabase
           .from('plants')
           .select('*')
           .eq('id', exchange.receiver_plant_id)
           .single();
         
-        // Fetch sender profile data
+        // Получаем данные профиля отправителя
         const { data: senderProfileData, error: senderProfileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', exchange.sender_id)
           .single();
         
-        // Fetch receiver profile data
+        // Получаем данные профиля получателя
         const { data: receiverProfileData, error: receiverProfileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', exchange.receiver_id)
           .single();
         
-        // Fetch selected plants if any
+        // Получаем выбранные растения, если они есть
         let selectedPlants: Plant[] = [];
         if (exchange.selected_plants_ids && exchange.selected_plants_ids.length > 0) {
           const { data: selectedPlantsData, error: selectedPlantsError } = await supabase
@@ -147,11 +147,11 @@ const ExchangesPage = () => {
           if (!selectedPlantsError && selectedPlantsData) {
             selectedPlants = selectedPlantsData;
           } else {
-            console.error("Error fetching selected plants:", selectedPlantsError);
+            console.error("Ошибка при получении выбранных растений:", selectedPlantsError);
           }
         }
         
-        // Default values in case of errors
+        // Значения по умолчанию в случае ошибок
         const defaultPlant: Plant = {
           id: 'unknown',
           name: 'Неизвестное растение',
@@ -164,7 +164,7 @@ const ExchangesPage = () => {
           username: 'Неизвестный пользователь',
         };
         
-        // Create complete exchange object
+        // Создаем полный объект обмена
         const completeExchange: Exchange = {
           id: exchange.id,
           sender_id: exchange.sender_id,
@@ -184,10 +184,10 @@ const ExchangesPage = () => {
         completeExchanges.push(completeExchange);
       }
       
-      console.log("Processed exchanges:", completeExchanges);
+      console.log("Обработанные обмены:", completeExchanges);
       setExchanges(completeExchanges);
     } catch (error) {
-      console.error("Unexpected error fetching exchanges:", error);
+      console.error("Непредвиденная ошибка при получении обменов:", error);
       setError("Произошла непредвиденная ошибка при загрузке обменов.");
     } finally {
       setIsLoading(false);
@@ -207,7 +207,7 @@ const ExchangesPage = () => {
         .eq('status', 'available');
       
       if (error) {
-        console.error("Error fetching available plants:", error);
+        console.error("Ошибка при получении доступных растений:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось загрузить доступные растения. Пожалуйста, попробуйте снова.",
@@ -218,7 +218,7 @@ const ExchangesPage = () => {
       
       return data || [];
     } catch (error) {
-      console.error("Unexpected error fetching available plants:", error);
+      console.error("Непредвиденная ошибка при получении доступных растений:", error);
       return [];
     }
   };
@@ -253,7 +253,7 @@ const ExchangesPage = () => {
         .eq('id', selectingFor);
       
       if (error) {
-        console.error("Error updating exchange:", error);
+        console.error("Ошибка при обновлении обмена:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось обновить обмен. Пожалуйста, попробуйте снова.",
@@ -270,7 +270,7 @@ const ExchangesPage = () => {
       setSelectingFor(null);
       fetchExchanges();
     } catch (error) {
-      console.error("Unexpected error updating exchange:", error);
+      console.error("Непредвиденная ошибка при обновлении обмена:", error);
       toast({
         title: "Ошибка",
         description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
@@ -290,7 +290,7 @@ const ExchangesPage = () => {
         .eq('id', exchangeId);
       
       if (error) {
-        console.error("Error confirming exchange:", error);
+        console.error("Ошибка при подтверждении обмена:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось подтвердить обмен. Пожалуйста, попробуйте снова.",
@@ -299,7 +299,7 @@ const ExchangesPage = () => {
         return;
       }
       
-      // Update plants status to exchanged
+      // Обновляем статус растений на "обменено"
       const plantsToUpdate = [exchange.sender_plant_id, exchange.receiver_plant_id, ...(exchange.selected_plants_ids || [])];
       
       for (const plantId of plantsToUpdate) {
@@ -309,7 +309,7 @@ const ExchangesPage = () => {
           .eq('id', plantId);
         
         if (plantError) {
-          console.error(`Error updating plant ${plantId}:`, plantError);
+          console.error(`Ошибка при обновлении растения ${plantId}:`, plantError);
         }
       }
       
@@ -320,7 +320,7 @@ const ExchangesPage = () => {
       
       fetchExchanges();
     } catch (error) {
-      console.error("Unexpected error confirming exchange:", error);
+      console.error("Непредвиденная ошибка при подтверждении обмена:", error);
       toast({
         title: "Ошибка",
         description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
@@ -331,14 +331,14 @@ const ExchangesPage = () => {
 
   const handleCancelExchange = async (exchangeId: string) => {
     try {
-      // We need to explicitly specify the status value to avoid constraint issues
+      // Указываем явно значение статуса, чтобы избежать проблем с ограничениями
       const { error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
         .eq('id', exchangeId);
       
       if (error) {
-        console.error("Error cancelling exchange:", error);
+        console.error("Ошибка при отмене обмена:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось отменить обмен. Пожалуйста, попробуйте снова.",
@@ -354,7 +354,7 @@ const ExchangesPage = () => {
       
       fetchExchanges();
     } catch (error) {
-      console.error("Unexpected error cancelling exchange:", error);
+      console.error("Непредвиденная ошибка при отмене обмена:", error);
       toast({
         title: "Ошибка",
         description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
@@ -467,6 +467,20 @@ const ExchangesPage = () => {
                             </ul>
                           </div>
                         )}
+                        
+                        {exchange.sender_plant && exchange.sender_plant.image_url && (
+                          <div className="mt-2">
+                            <p className="font-medium mb-1">Фото растения:</p>
+                            <img 
+                              src={exchange.sender_plant.image_url} 
+                              alt={exchange.sender_plant.name} 
+                              className="w-32 h-32 object-cover rounded-md border"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder.svg';
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                       
                       <div className="space-y-2">
@@ -482,12 +496,26 @@ const ExchangesPage = () => {
                           <span>{exchange.receiver_plant?.name || 'Н/Д'}</span>
                           <span className="text-xs text-muted-foreground">({exchange.receiver_plant?.species || 'Неизвестный вид'})</span>
                         </div>
+                        
+                        {exchange.receiver_plant && exchange.receiver_plant.image_url && (
+                          <div className="mt-2">
+                            <p className="font-medium mb-1">Фото запрашиваемого растения:</p>
+                            <img 
+                              src={exchange.receiver_plant.image_url} 
+                              alt={exchange.receiver_plant.name} 
+                              className="w-32 h-32 object-cover rounded-md border"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder.svg';
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
                   
                   <CardFooter className="border-t bg-muted/30 flex flex-wrap gap-2 justify-end">
-                    {/* Select plants button - only visible to receiver when status is pending */}
+                    {/* Кнопка выбора растений - видна только получателю, когда статус "ожидает" */}
                     {user && exchange.status === 'pending' && exchange.receiver_id === user.id && (
                       <Popover>
                         <PopoverTrigger asChild>
@@ -509,9 +537,19 @@ const ExchangesPage = () => {
                                       checked={selectedPlants.includes(plant.id)}
                                       onCheckedChange={() => handlePlantSelectionChange(plant.id)}
                                     />
-                                    <label htmlFor={`plant-${plant.id}`} className="text-sm cursor-pointer">
+                                    <label htmlFor={`plant-${plant.id}`} className="text-sm cursor-pointer flex-1">
                                       <div>{plant.name}</div>
                                       <div className="text-xs text-muted-foreground">{plant.species}</div>
+                                      {plant.image_url && (
+                                        <img 
+                                          src={plant.image_url} 
+                                          alt={plant.name} 
+                                          className="w-20 h-20 object-cover rounded-md mt-1"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).src = '/placeholder.svg';
+                                          }}
+                                        />
+                                      )}
                                     </label>
                                   </div>
                                 ))}
@@ -538,14 +576,14 @@ const ExchangesPage = () => {
                       </Popover>
                     )}
                     
-                    {/* Confirm exchange button - visible to both parties when status is awaiting_confirmation */}
+                    {/* Кнопка подтверждения обмена - видна обеим сторонам, когда статус "ожидает подтверждения" */}
                     {user && exchange.status === 'awaiting_confirmation' && (
                       <Button size="sm" onClick={() => handleConfirmExchange(exchange.id)} className="gap-1">
                         <Check className="h-4 w-4" /> Подтвердить обмен
                       </Button>
                     )}
                     
-                    {/* Cancel button - visible for pending and awaiting_confirmation states */}
+                    {/* Кнопка отмены - видна для состояний "ожидает" и "ожидает подтверждения" */}
                     {user && ['pending', 'awaiting_confirmation'].includes(exchange.status) && (
                       <Button variant="destructive" size="sm" onClick={() => handleCancelExchange(exchange.id)} className="gap-1">
                         <X className="h-4 w-4" /> Отменить

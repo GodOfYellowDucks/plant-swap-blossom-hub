@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -47,7 +48,7 @@ const PlantDetail = () => {
     const loadPlantAndOwner = async () => {
       setIsLoading(true);
       try {
-        // Fetch plant data - use eq instead of maybeSingle
+        // Получаем данные растения
         const { data: plantData, error: plantError } = await supabase
           .from('plants')
           .select('*')
@@ -59,10 +60,10 @@ const PlantDetail = () => {
           return;
         }
         
-        // Use the first item from the array
+        // Используем первый элемент из массива
         setPlant(plantData[0]);
         
-        // Fetch owner profile
+        // Получаем профиль владельца
         const { data: ownerData, error: ownerError } = await supabase
           .from('profiles')
           .select('*')
@@ -73,7 +74,7 @@ const PlantDetail = () => {
           setOwner(ownerData[0]);
         }
         
-        // Check if there's an existing exchange for this plant if user is logged in
+        // Проверяем, есть ли существующий обмен для этого растения, если пользователь вошел в систему
         if (user) {
           const { data: exchanges, error: exchangesError } = await supabase
             .from('exchange_offers')
@@ -88,10 +89,10 @@ const PlantDetail = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading plant details:', error);
+        console.error('Ошибка загрузки деталей растения:', error);
         toast({
-          title: "Error",
-          description: "Failed to load plant details. Please try again.",
+          title: "Ошибка",
+          description: "Не удалось загрузить информацию о растении. Пожалуйста, попробуйте снова.",
           variant: "destructive",
         });
       } finally {
@@ -105,15 +106,15 @@ const PlantDetail = () => {
   const handleExchangeRequest = async () => {
     if (!user || !plant || !owner) {
       toast({
-        title: "Error",
-        description: "You must be logged in to request an exchange.",
+        title: "Ошибка",
+        description: "Вы должны войти в систему, чтобы запросить обмен.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Get available plants from current user to check if they have anything to offer
+      // Получаем доступные растения от текущего пользователя, чтобы проверить, есть ли у него что предложить
       const { data: availablePlants, error: plantsError } = await supabase
         .from('plants')
         .select('id')
@@ -124,48 +125,48 @@ const PlantDetail = () => {
       
       if (!availablePlants || availablePlants.length === 0) {
         toast({
-          title: "No Plants Available",
-          description: "You need to add at least one plant to offer an exchange.",
+          title: "Нет доступных растений",
+          description: "Вам нужно добавить хотя бы одно растение, чтобы предложить обмен.",
           variant: "destructive",
         });
         return;
       }
 
-      // Create exchange offer
+      // Создаем предложение обмена
       const { data: exchange, error: exchangeError } = await supabase
         .from('exchange_offers')
         .insert({
           sender_id: user.id,
           receiver_id: plant.user_id,
-          sender_plant_id: availablePlants[0].id, // Use first available plant to satisfy the constraint
+          sender_plant_id: availablePlants[0].id, // Используем первое доступное растение для удовлетворения ограничения
           receiver_plant_id: plant.id,
           status: 'pending',
-          selected_plants_ids: null // Will be populated when User2 selects plants
+          selected_plants_ids: null // Будет заполнено, когда User2 выберет растения
         })
         .select()
         .single();
       
       if (exchangeError) throw exchangeError;
       
-      console.log('Exchange created:', exchange);
+      console.log('Обмен создан:', exchange);
       
-      // Skip notification creation as it seems to have RLS issues
-      // We'll navigate to exchanges page anyway
+      // Пропускаем создание уведомления, так как, похоже, есть проблемы с RLS
+      // Все равно перейдем на страницу обменов
       
       toast({
-        title: "Exchange Requested",
-        description: "Your exchange request has been sent. The owner will select which of your plants they want in return.",
+        title: "Запрос на обмен отправлен",
+        description: "Ваш запрос на обмен был отправлен. Владелец выберет, какие из ваших растений он хочет получить взамен.",
       });
       
       setShowExchangeDialog(false);
       
-      // Navigate to the exchanges page
+      // Переходим на страницу обменов
       navigate('/exchanges');
     } catch (error: any) {
-      console.error('Failed to create exchange:', error);
+      console.error('Не удалось создать обмен:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to request exchange. Please try again.",
+        title: "Ошибка",
+        description: error.message || "Не удалось запросить обмен. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
     }
@@ -177,7 +178,7 @@ const PlantDetail = () => {
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="flex flex-col items-center">
             <Leaf className="h-12 w-12 text-plant-500 animate-leaf-sway" />
-            <p className="mt-4 text-gray-600">Loading plant details...</p>
+            <p className="mt-4 text-gray-600">Загрузка информации о растении...</p>
           </div>
         </div>
       </Layout>
@@ -188,10 +189,10 @@ const PlantDetail = () => {
     return (
       <Layout>
         <div className="text-center py-8">
-          <h1 className="text-2xl font-bold text-gray-900">Plant Not Found</h1>
-          <p className="mt-2 text-gray-600">The plant you're looking for doesn't exist or has been removed.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Растение не найдено</h1>
+          <p className="mt-2 text-gray-600">Растение, которое вы ищете, не существует или было удалено.</p>
           <Button onClick={() => navigate('/')} className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
+            <ArrowLeft className="mr-2 h-4 w-4" /> Вернуться на главную
           </Button>
         </div>
       </Layout>
@@ -203,7 +204,7 @@ const PlantDetail = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('ru-RU', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -218,11 +219,11 @@ const PlantDetail = () => {
         className="mb-6"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back
+        Назад
       </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-        {/* Plant Image */}
+        {/* Изображение растения */}
         <div className="md:col-span-2">
           <div className="bg-white rounded-lg overflow-hidden shadow-sm">
             <img
@@ -230,13 +231,13 @@ const PlantDetail = () => {
               alt={plant.name}
               className="w-full h-auto object-cover aspect-square"
               onError={(e) => {
-                e.currentTarget.src = '/placeholder.svg';
+                (e.currentTarget as HTMLImageElement).src = '/placeholder.svg';
               }}
             />
           </div>
         </div>
 
-        {/* Plant Details */}
+        {/* Подробности о растении */}
         <div className="md:col-span-3">
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex justify-between items-start mb-4">
@@ -254,56 +255,58 @@ const PlantDetail = () => {
                 variant={plant.status === 'available' ? 'default' : plant.status === 'pending' ? 'secondary' : 'destructive'} 
                 className="capitalize"
               >
-                {plant.status}
+                {plant.status === 'available' ? 'Доступно' : 
+                 plant.status === 'pending' ? 'Ожидает' : 
+                 plant.status === 'exchanged' ? 'Обменено' : plant.status}
               </Badge>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="flex items-center text-gray-600">
                 <MapPin className="h-4 w-4 mr-2 text-plant-500" />
-                <span>{plant.location || 'No location'}</span>
+                <span>{plant.location || 'Нет местоположения'}</span>
               </div>
               <div className="flex items-center text-gray-600">
                 <Calendar className="h-4 w-4 mr-2 text-plant-500" />
-                <span>Listed on {formatDate(plant.created_at)}</span>
+                <span>Размещено {formatDate(plant.created_at)}</span>
               </div>
               <div className="flex items-center text-gray-600">
                 <UserIcon className="h-4 w-4 mr-2 text-plant-500" />
-                <span>Owned by {owner.name || owner.username || 'User'}</span>
+                <span>Владелец: {owner.name || owner.username || 'Пользователь'}</span>
               </div>
               <div className="flex items-center text-gray-600">
                 <Leaf className="h-4 w-4 mr-2 text-plant-500" />
-                <span className="capitalize">{plant.type || 'Plant'}</span>
+                <span className="capitalize">{plant.type || 'Растение'}</span>
               </div>
             </div>
 
             <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-2">Description</h2>
-              <p className="text-gray-700">{plant.description || 'No description provided.'}</p>
+              <h2 className="text-lg font-semibold mb-2">Описание</h2>
+              <p className="text-gray-700">{plant.description || 'Описание не предоставлено.'}</p>
             </div>
 
-            {/* Exchange Status */}
+            {/* Статус обмена */}
             {existingExchange && (
               <Alert className="mb-6">
                 <Info className="h-4 w-4" />
                 <AlertDescription>
                   {existingExchange.status === 'pending' ? (
-                    <span>You already have a pending exchange request for this plant. Check your exchanges page for updates.</span>
+                    <span>У вас уже есть ожидающий запрос на обмен для этого растения. Проверьте страницу обменов для обновлений.</span>
                   ) : existingExchange.status === 'accepted' ? (
-                    <span>This exchange has been accepted and is waiting for completion.</span>
+                    <span>Этот обмен был принят и ожидает завершения.</span>
                   ) : (
-                    <span>This exchange has been {existingExchange.status}.</span>
+                    <span>Этот обмен был {existingExchange.status === 'completed' ? 'завершен' : 'отменен'}.</span>
                   )}
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* Action Buttons */}
+            {/* Кнопки действий */}
             <div className="flex flex-wrap gap-3">
               {isOwner ? (
                 <>
                   <Button onClick={() => navigate(`/profile`)} variant="outline">
-                    Edit Plant
+                    Редактировать растение
                   </Button>
                 </>
               ) : canExchange ? (
@@ -313,14 +316,14 @@ const PlantDetail = () => {
                       <DialogTrigger asChild>
                         <Button className="bg-plant-500 hover:bg-plant-600">
                           <ShoppingCart className="mr-2 h-4 w-4" />
-                          Offer Exchange
+                          Предложить обмен
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
-                          <DialogTitle>Offer an Exchange</DialogTitle>
+                          <DialogTitle>Предложить обмен</DialogTitle>
                           <DialogDescription>
-                            Would you like to offer an exchange for {plant.name}? The owner will be able to select which of your plants they want in return.
+                            Хотите предложить обмен на {plant.name}? Владелец сможет выбрать, какие из ваших растений он хочет получить взамен.
                           </DialogDescription>
                         </DialogHeader>
                         
@@ -329,7 +332,7 @@ const PlantDetail = () => {
                             onClick={handleExchangeRequest}
                             className="bg-plant-500 hover:bg-plant-600"
                           >
-                            Send Exchange Request
+                            Отправить запрос на обмен
                           </Button>
                         </DialogFooter>
                       </DialogContent>
@@ -339,54 +342,54 @@ const PlantDetail = () => {
                   {existingExchange && existingExchange.status === 'pending' && (
                     <Button variant="outline" disabled>
                       <Clock className="mr-2 h-4 w-4" />
-                      Exchange Pending
+                      Обмен в ожидании
                     </Button>
                   )}
                   
                   {existingExchange && existingExchange.status === 'accepted' && (
                     <Button variant="default" onClick={() => navigate('/exchanges')}>
-                      View Exchange
+                      Просмотр обмена
                     </Button>
                   )}
                 </>
               ) : !user ? (
                 <Button onClick={() => navigate('/login')} variant="outline">
-                  Log in to Offer Exchange
+                  Войдите, чтобы предложить обмен
                 </Button>
               ) : (
                 <Button disabled variant="outline">
-                  {plant.status === 'exchanged' ? 'Already Exchanged' : 'Not Available'}
+                  {plant.status === 'exchanged' ? 'Уже обменено' : 'Недоступно'}
                 </Button>
               )}
               
               <Button variant="ghost" onClick={() => navigate(`/profile/${plant.user_id}`)}>
-                View Owner Profile
+                Посмотреть профиль владельца
               </Button>
             </div>
           </div>
           
-          {/* Owner Preview */}
+          {/* Информация о владельце */}
           <div className="bg-white rounded-lg p-6 shadow-sm mt-6">
             <div className="flex items-center">
               <div className="flex-shrink-0 mr-4">
                 <img
                   src={owner.avatar_url}
-                  alt={owner.name || 'User'}
+                  alt={owner.name || 'Пользователь'}
                   className="h-16 w-16 rounded-full object-cover"
                   onError={(e) => {
-                    e.currentTarget.src = '/placeholder.svg';
+                    (e.currentTarget as HTMLImageElement).src = '/placeholder.svg';
                   }}
                 />
               </div>
               <div>
-                <h2 className="text-lg font-semibold">{owner.name || owner.username || 'User'}</h2>
-                <p className="text-gray-600 text-sm">{owner.location || 'No location'}</p>
+                <h2 className="text-lg font-semibold">{owner.name || owner.username || 'Пользователь'}</h2>
+                <p className="text-gray-600 text-sm">{owner.location || 'Нет местоположения'}</p>
                 <Button 
                   variant="link" 
                   className="p-0 h-auto text-plant-600 hover:text-plant-700"
                   onClick={() => navigate(`/profile/${owner.id}`)}
                 >
-                  View Profile
+                  Просмотреть профиль
                 </Button>
               </div>
             </div>
@@ -394,7 +397,7 @@ const PlantDetail = () => {
             <Separator className="my-4" />
             
             <p className="text-gray-700 text-sm line-clamp-3">
-              {owner.bio || 'This user has not added a bio yet.'}
+              {owner.bio || 'Этот пользователь еще не добавил информацию о себе.'}
             </p>
           </div>
         </div>
