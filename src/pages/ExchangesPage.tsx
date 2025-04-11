@@ -48,16 +48,22 @@ const ExchangesPage = () => {
           return;
         }
 
-        // Using explicit foreign key constraints to avoid relationship ambiguity
+        // Fixing the query to properly specify the relationships
         const { data: exchangeData, error: exchangeError } = await supabase
           .from('exchange_offers')
           .select(`
-            id, sender_id, receiver_id, status, created_at, selected_plants_ids,
-            sender_plant_id, receiver_plant_id,
-            sender_plant:sender_plant_id (id, name, species, image_url, user_id),
-            receiver_plant:receiver_plant_id (id, name, species, image_url, user_id),
-            sender:sender_id (id, username, name, avatar_url),
-            receiver:receiver_id (id, username, name, avatar_url)
+            id, 
+            sender_id, 
+            receiver_id, 
+            status, 
+            created_at, 
+            selected_plants_ids,
+            sender_plant_id, 
+            receiver_plant_id,
+            sender_plant:plants!sender_plant_id(id, name, species, image_url, user_id),
+            receiver_plant:plants!receiver_plant_id(id, name, species, image_url, user_id),
+            sender:profiles!sender_id(id, username, name, avatar_url),
+            receiver:profiles!receiver_id(id, username, name, avatar_url)
           `)
           .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
@@ -70,22 +76,30 @@ const ExchangesPage = () => {
         }
 
         if (exchangeData) {
-          // Map the data to the Exchange type, ensuring correct type conversions
-          const mappedExchanges: Exchange[] = exchangeData.map(exchange => ({
-            id: exchange.id,
-            sender_id: exchange.sender_id,
-            receiver_id: exchange.receiver_id,
-            sender_plant_id: exchange.sender_plant_id,
-            receiver_plant_id: exchange.receiver_plant_id,
-            status: exchange.status as ExchangeStatus, // Cast to ensure it matches the ExchangeStatus type
-            created_at: exchange.created_at,
-            selected_plants_ids: exchange.selected_plants_ids,
-            sender_plant: exchange.sender_plant as Plant,
-            receiver_plant: exchange.receiver_plant as Plant,
-            sender: exchange.sender as Profile,
-            receiver: exchange.receiver as Profile,
-            selected_plants: undefined // We don't have this data yet
-          }));
+          // Map the data to the Exchange type, ensuring we check for error objects
+          const mappedExchanges: Exchange[] = exchangeData.map(exchange => {
+            // Safely access nested objects with checks for error objects
+            const sender_plant = 'error' in exchange.sender_plant ? null : exchange.sender_plant;
+            const receiver_plant = 'error' in exchange.receiver_plant ? null : exchange.receiver_plant;
+            const sender = 'error' in exchange.sender ? null : exchange.sender;
+            const receiver = 'error' in exchange.receiver ? null : exchange.receiver;
+            
+            return {
+              id: exchange.id,
+              sender_id: exchange.sender_id,
+              receiver_id: exchange.receiver_id,
+              sender_plant_id: exchange.sender_plant_id,
+              receiver_plant_id: exchange.receiver_plant_id,
+              status: exchange.status as ExchangeStatus,
+              created_at: exchange.created_at,
+              selected_plants_ids: exchange.selected_plants_ids,
+              sender_plant: sender_plant as Plant | undefined,
+              receiver_plant: receiver_plant as Plant | undefined,
+              sender: sender as Profile | undefined,
+              receiver: receiver as Profile | undefined,
+              selected_plants: undefined
+            };
+          });
           
           console.log("Fetched exchanges:", mappedExchanges);
           setExchanges(mappedExchanges);
