@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   AlertCircle, 
   Clock, 
-  Plant as PlantIcon, 
+  Leaf, // Changed from Plant to Leaf which exists in lucide-react
   User, 
   Calendar, 
   CheckCheck, 
@@ -406,7 +405,7 @@ const ExchangesPage = () => {
           
           {!isLoading && !error && filteredExchanges.length === 0 && (
             <div className="text-center py-8">
-              <PlantIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+              <Leaf className="h-12 w-12 mx-auto text-muted-foreground" />
               <p className="mt-4">No exchanges found with the selected filter.</p>
             </div>
           )}
@@ -448,7 +447,7 @@ const ExchangesPage = () => {
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          <PlantIcon className="h-4 w-4 text-green-600" />
+                          <Leaf className="h-4 w-4 text-green-600" />
                           <span className="font-medium">Offering:</span>
                           <span>{exchange.sender_plant?.name || 'N/A'}</span>
                           <span className="text-xs text-muted-foreground">({exchange.sender_plant?.species || 'Unknown species'})</span>
@@ -476,7 +475,7 @@ const ExchangesPage = () => {
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          <PlantIcon className="h-4 w-4 text-green-600" />
+                          <Leaf className="h-4 w-4 text-green-600" />
                           <span className="font-medium">Requesting:</span>
                           <span>{exchange.receiver_plant?.name || 'N/A'}</span>
                           <span className="text-xs text-muted-foreground">({exchange.receiver_plant?.species || 'Unknown species'})</span>
