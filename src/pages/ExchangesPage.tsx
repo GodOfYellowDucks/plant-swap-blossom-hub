@@ -54,8 +54,8 @@ const ExchangesPage = () => {
           .select(`
             id, sender_id, receiver_id, status, created_at, selected_plants_ids,
             sender_plant_id, receiver_plant_id,
-            plants!exchange_offers_sender_plant_id_fkey (id, name, species, image_url, user_id),
-            plants!exchange_offers_receiver_plant_id_fkey (id, name, species, image_url, user_id),
+            sender_plant:sender_plant_id (id, name, species, image_url, user_id),
+            receiver_plant:receiver_plant_id (id, name, species, image_url, user_id),
             sender:sender_id (id, username, name, avatar_url),
             receiver:receiver_id (id, username, name, avatar_url)
           `)
@@ -70,11 +70,21 @@ const ExchangesPage = () => {
         }
 
         if (exchangeData) {
-          // Map the data to the Exchange type
+          // Map the data to the Exchange type, ensuring correct type conversions
           const mappedExchanges: Exchange[] = exchangeData.map(exchange => ({
-            ...exchange,
-            sender_plant: exchange.plants || null, // The sender plant
-            receiver_plant: exchange.plants || null, // The receiver plant
+            id: exchange.id,
+            sender_id: exchange.sender_id,
+            receiver_id: exchange.receiver_id,
+            sender_plant_id: exchange.sender_plant_id,
+            receiver_plant_id: exchange.receiver_plant_id,
+            status: exchange.status as ExchangeStatus, // Cast to ensure it matches the ExchangeStatus type
+            created_at: exchange.created_at,
+            selected_plants_ids: exchange.selected_plants_ids,
+            sender_plant: exchange.sender_plant as Plant,
+            receiver_plant: exchange.receiver_plant as Plant,
+            sender: exchange.sender as Profile,
+            receiver: exchange.receiver as Profile,
+            selected_plants: undefined // We don't have this data yet
           }));
           
           console.log("Fetched exchanges:", mappedExchanges);
@@ -145,8 +155,8 @@ const ExchangesPage = () => {
                   <p>Status: {getStatusBadge(exchange.status)}</p>
                   <p>Sender: {exchange.sender?.username || 'N/A'}</p>
                   <p>Receiver: {exchange.receiver?.username || 'N/A'}</p>
-                  <p>Sender Plant: {exchange.plants?.name || 'N/A'}</p>
-                  <p>Receiver Plant: {exchange.plants?.name || 'N/A'}</p>
+                  <p>Sender Plant: {exchange.sender_plant?.name || 'N/A'}</p>
+                  <p>Receiver Plant: {exchange.receiver_plant?.name || 'N/A'}</p>
                   <p>Created At: {new Date(exchange.created_at).toLocaleDateString()}</p>
                 </div>
               ))}
