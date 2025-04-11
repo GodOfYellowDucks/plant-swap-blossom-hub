@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
@@ -60,11 +59,7 @@ const ExchangesPage = () => {
             created_at, 
             selected_plants_ids,
             sender_plant_id, 
-            receiver_plant_id,
-            sender_plant:plants(id, name, species, image_url, user_id),
-            receiver_plant:plants(id, name, species, image_url, user_id),
-            sender:profiles(id, username, name, avatar_url),
-            receiver:profiles(id, username, name, avatar_url)
+            receiver_plant_id
           `)
           .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
@@ -76,40 +71,83 @@ const ExchangesPage = () => {
           return;
         }
 
-        if (exchangeData) {
-          console.log("Raw exchange data:", exchangeData);
-          
-          // Map the data to the Exchange type with proper type handling
-          const mappedExchanges: Exchange[] = exchangeData.map(exchange => {
-            // Ensure the status is one of the valid ExchangeStatus values
-            let status: ExchangeStatus = 'pending';
-            if (exchange.status === 'pending' || 
-                exchange.status === 'awaiting_confirmation' || 
-                exchange.status === 'completed' || 
-                exchange.status === 'cancelled') {
-              status = exchange.status as ExchangeStatus;
-            }
-            
-            return {
-              id: exchange.id,
-              sender_id: exchange.sender_id,
-              receiver_id: exchange.receiver_id,
-              sender_plant_id: exchange.sender_plant_id,
-              receiver_plant_id: exchange.receiver_plant_id,
-              status: status,
-              created_at: exchange.created_at,
-              selected_plants_ids: exchange.selected_plants_ids,
-              sender_plant: exchange.sender_plant as Plant,
-              receiver_plant: exchange.receiver_plant as Plant,
-              sender: exchange.sender as Profile,
-              receiver: exchange.receiver as Profile,
-              selected_plants: undefined
-            };
-          });
-          
-          console.log("Processed exchanges:", mappedExchanges);
-          setExchanges(mappedExchanges);
+        if (!exchangeData || exchangeData.length === 0) {
+          console.log("No exchanges found");
+          setExchanges([]);
+          setIsLoading(false);
+          return;
         }
+
+        console.log("Raw exchange data:", exchangeData);
+        
+        const completeExchanges: Exchange[] = [];
+        
+        for (const exchange of exchangeData) {
+          let status: ExchangeStatus = 'pending';
+          if (exchange.status === 'pending' || 
+              exchange.status === 'awaiting_confirmation' || 
+              exchange.status === 'completed' || 
+              exchange.status === 'cancelled') {
+            status = exchange.status as ExchangeStatus;
+          }
+          
+          const { data: senderPlantData, error: senderPlantError } = await supabase
+            .from('plants')
+            .select('*')
+            .eq('id', exchange.sender_plant_id)
+            .single();
+            
+          const { data: receiverPlantData, error: receiverPlantError } = await supabase
+            .from('plants')
+            .select('*')
+            .eq('id', exchange.receiver_plant_id)
+            .single();
+            
+          const { data: senderProfileData, error: senderProfileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', exchange.sender_id)
+            .single();
+            
+          const { data: receiverProfileData, error: receiverProfileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', exchange.receiver_id)
+            .single();
+          
+          const defaultPlant: Plant = {
+            id: 'unknown',
+            name: 'Unknown Plant',
+            species: 'Unknown Species',
+            user_id: 'unknown',
+          };
+          
+          const defaultProfile: Profile = {
+            id: 'unknown',
+            username: 'Unknown User',
+          };
+          
+          const completeExchange: Exchange = {
+            id: exchange.id,
+            sender_id: exchange.sender_id,
+            receiver_id: exchange.receiver_id,
+            sender_plant_id: exchange.sender_plant_id,
+            receiver_plant_id: exchange.receiver_plant_id,
+            status: status,
+            created_at: exchange.created_at,
+            selected_plants_ids: exchange.selected_plants_ids,
+            sender_plant: senderPlantError ? defaultPlant : (senderPlantData as Plant),
+            receiver_plant: receiverPlantError ? defaultPlant : (receiverPlantData as Plant),
+            sender: senderProfileError ? defaultProfile : (senderProfileData as Profile),
+            receiver: receiverProfileError ? defaultProfile : (receiverProfileData as Profile),
+            selected_plants: undefined
+          };
+          
+          completeExchanges.push(completeExchange);
+        }
+        
+        console.log("Processed exchanges:", completeExchanges);
+        setExchanges(completeExchanges);
       } catch (error) {
         console.error("Unexpected error fetching exchanges:", error);
         setError("An unexpected error occurred while loading exchanges.");
