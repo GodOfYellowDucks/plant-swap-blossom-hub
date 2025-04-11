@@ -36,6 +36,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const form = useForm<PlantFormValues>({
     resolver: zodResolver(plantFormSchema),
@@ -62,55 +63,115 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     setIsDragging(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('image/')) {
-        setImageFile(file);
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            setImageUrl(event.target.result as string);
-          }
-        };
-        reader.readAsDataURL(file);
-      } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload an image file.",
-          variant: "destructive",
-        });
-      }
+      handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      if (file.type.startsWith('image/')) {
-        setImageFile(file);
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            setImageUrl(event.target.result as string);
-          }
-        };
-        reader.readAsDataURL(file);
-      } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload an image file.",
-          variant: "destructive",
-        });
-      }
+      handleFileSelection(e.target.files[0]);
     }
+  };
+
+  const handleFileSelection = (file: File) => {
+    setUploadError(null);
+    
+    if (!file.type.startsWith('image/')) {
+      setUploadError("Please upload an image file (JPEG, PNG, etc.)");
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("File size must be less than 5MB");
+      return;
+    }
+    
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setImageUrl(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
     setImageFile(null);
     setImageUrl(null);
+    setUploadError(null);
+  };
+
+  const ensurePlantsBucketExists = async () => {
+    try {
+      // Check if the plants bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const plantsBucketExists = buckets?.some(bucket => bucket.name === 'plants');
+      
+      if (!plantsBucketExists) {
+        // Create the plants bucket if it doesn't exist
+        const { error } = await supabase.storage.createBucket('plants', {
+          public: true,
+          fileSizeLimit: 5242880, // 5MB
+        });
+        
+        if (error) {
+          console.error('Error creating plants bucket:', error);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error checking/creating plants bucket:', error);
+      return false;
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!imageFile || !user) return null;
+    
+    try {
+      // Ensure the plants bucket exists
+      const bucketExists = await ensurePlantsBucketExists();
+      if (!bucketExists) {
+        throw new Error('Could not create or access the plants storage bucket');
+      }
+      
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+      
+      // Upload image to storage
+      const { error: uploadError, data } = await supabase.storage
+        .from('plants')
+        .upload(filePath, imageFile);
+      
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('plants')
+        .getPublicUrl(filePath);
+      
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
   };
 
   const onSubmit = async (values: PlantFormValues) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to add a plant.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsSaving(true);
     let plantImageUrl = null;
@@ -118,25 +179,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     try {
       // Upload image if provided
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `plants/${fileName}`;
-
-        // Upload image to storage
-        const { error: uploadError } = await supabase.storage
-          .from('plants')
-          .upload(filePath, imageFile);
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('plants')
-          .getPublicUrl(filePath);
-
-        plantImageUrl = urlData.publicUrl;
+        plantImageUrl = await uploadImage();
       }
 
       // Insert new plant
@@ -216,11 +259,13 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
           <input 
             type="file" 
             accept="image/*" 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={handleFileSelect}
-            onClick={(e) => e.stopPropagation()}
           />
         </div>
+        {uploadError && (
+          <p className="mt-2 text-sm text-red-500">{uploadError}</p>
+        )}
       </div>
 
       <Form {...form}>

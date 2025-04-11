@@ -48,7 +48,8 @@ const ExchangesPage = () => {
           return;
         }
 
-        // Fixing the query to properly specify the relationships
+        console.log("Fetching exchanges for user:", user.id);
+
         const { data: exchangeData, error: exchangeError } = await supabase
           .from('exchange_offers')
           .select(`
@@ -60,10 +61,10 @@ const ExchangesPage = () => {
             selected_plants_ids,
             sender_plant_id, 
             receiver_plant_id,
-            sender_plant:plants!sender_plant_id(id, name, species, image_url, user_id),
-            receiver_plant:plants!receiver_plant_id(id, name, species, image_url, user_id),
-            sender:profiles!sender_id(id, username, name, avatar_url),
-            receiver:profiles!receiver_id(id, username, name, avatar_url)
+            sender_plant:plants(id, name, species, image_url, user_id),
+            receiver_plant:plants(id, name, species, image_url, user_id),
+            sender:profiles(id, username, name, avatar_url),
+            receiver:profiles(id, username, name, avatar_url)
           `)
           .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
@@ -76,13 +77,18 @@ const ExchangesPage = () => {
         }
 
         if (exchangeData) {
-          // Map the data to the Exchange type, ensuring we check for error objects
+          console.log("Raw exchange data:", exchangeData);
+          
+          // Map the data to the Exchange type with proper type handling
           const mappedExchanges: Exchange[] = exchangeData.map(exchange => {
-            // Safely access nested objects with checks for error objects
-            const sender_plant = 'error' in exchange.sender_plant ? null : exchange.sender_plant;
-            const receiver_plant = 'error' in exchange.receiver_plant ? null : exchange.receiver_plant;
-            const sender = 'error' in exchange.sender ? null : exchange.sender;
-            const receiver = 'error' in exchange.receiver ? null : exchange.receiver;
+            // Ensure the status is one of the valid ExchangeStatus values
+            let status: ExchangeStatus = 'pending';
+            if (exchange.status === 'pending' || 
+                exchange.status === 'awaiting_confirmation' || 
+                exchange.status === 'completed' || 
+                exchange.status === 'cancelled') {
+              status = exchange.status as ExchangeStatus;
+            }
             
             return {
               id: exchange.id,
@@ -90,18 +96,18 @@ const ExchangesPage = () => {
               receiver_id: exchange.receiver_id,
               sender_plant_id: exchange.sender_plant_id,
               receiver_plant_id: exchange.receiver_plant_id,
-              status: exchange.status as ExchangeStatus,
+              status: status,
               created_at: exchange.created_at,
               selected_plants_ids: exchange.selected_plants_ids,
-              sender_plant: sender_plant as Plant | undefined,
-              receiver_plant: receiver_plant as Plant | undefined,
-              sender: sender as Profile | undefined,
-              receiver: receiver as Profile | undefined,
+              sender_plant: exchange.sender_plant as Plant,
+              receiver_plant: exchange.receiver_plant as Plant,
+              sender: exchange.sender as Profile,
+              receiver: exchange.receiver as Profile,
               selected_plants: undefined
             };
           });
           
-          console.log("Fetched exchanges:", mappedExchanges);
+          console.log("Processed exchanges:", mappedExchanges);
           setExchanges(mappedExchanges);
         }
       } catch (error) {
@@ -113,7 +119,7 @@ const ExchangesPage = () => {
     };
 
     fetchExchanges();
-  }, [user, toast]);
+  }, [user]);
 
   const filteredExchanges = statusFilter === 'all'
     ? exchanges
