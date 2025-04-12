@@ -198,12 +198,13 @@ const ExchangesPage = () => {
     fetchExchanges();
   }, [user]);
 
-  const fetchAvailablePlants = async (senderId: string) => {
+  // Обновляем функцию получения доступных растений, чтобы выбирать растения отправителя предложения
+  const fetchAvailablePlants = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('plants')
         .select('*')
-        .eq('user_id', senderId)
+        .eq('user_id', userId)
         .eq('status', 'available');
       
       if (error) {
@@ -216,6 +217,7 @@ const ExchangesPage = () => {
         return [];
       }
       
+      console.log("Получены доступные растения:", data);
       return data || [];
     } catch (error) {
       console.error("Непредвиденная ошибка при получении доступных растений:", error);
@@ -224,7 +226,9 @@ const ExchangesPage = () => {
   };
 
   const handleSelectPlants = async (exchangeId: string, senderId: string) => {
+    console.log("Выбор растений для обмена:", exchangeId, "отправитель:", senderId);
     const plants = await fetchAvailablePlants(senderId);
+    console.log("Полученные растения для выбора:", plants);
     setAvailablePlants(plants);
     setSelectedPlants([]);
     setSelectingFor(exchangeId);
@@ -244,6 +248,8 @@ const ExchangesPage = () => {
     if (!selectingFor || selectedPlants.length === 0) return;
     
     try {
+      console.log("Обновление обмена:", selectingFor, "с выбранными растениями:", selectedPlants);
+      
       const { error } = await supabase
         .from('exchange_offers')
         .update({
@@ -283,6 +289,8 @@ const ExchangesPage = () => {
     try {
       const exchange = exchanges.find(e => e.id === exchangeId);
       if (!exchange) return;
+      
+      console.log("Подтверждение обмена:", exchangeId);
       
       const { error } = await supabase
         .from('exchange_offers')
@@ -331,7 +339,9 @@ const ExchangesPage = () => {
 
   const handleCancelExchange = async (exchangeId: string) => {
     try {
-      // Указываем явно значение статуса, чтобы избежать проблем с ограничениями
+      console.log("Отмена обмена:", exchangeId);
+      
+      // Используем UPDATE вместо удаления, чтобы изменить статус на "cancelled"
       const { error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
@@ -576,14 +586,14 @@ const ExchangesPage = () => {
                       </Popover>
                     )}
                     
-                    {/* Кнопка подтверждения обмена - видна обеим сторонам, когда статус "ожидает подтверждения" */}
-                    {user && exchange.status === 'awaiting_confirmation' && (
-                      <Button size="sm" onClick={() => handleConfirmExchange(exchange.id)} className="gap-1">
+                    {/* Кнопка подтверждения обмена - видна отправителю, когда статус "ожидает подтверждения" */}
+                    {user && exchange.status === 'awaiting_confirmation' && exchange.sender_id === user.id && (
+                      <Button size="sm" variant="default" onClick={() => handleConfirmExchange(exchange.id)} className="gap-1">
                         <Check className="h-4 w-4" /> Подтвердить обмен
                       </Button>
                     )}
                     
-                    {/* Кнопка отмены - видна для состояний "ожидает" и "ожидает подтверждения" */}
+                    {/* Кнопка отмены - видна обеим сторонам для состояний "ожидает" и "ожидает подтверждения" */}
                     {user && ['pending', 'awaiting_confirmation'].includes(exchange.status) && (
                       <Button variant="destructive" size="sm" onClick={() => handleCancelExchange(exchange.id)} className="gap-1">
                         <X className="h-4 w-4" /> Отменить

@@ -16,7 +16,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load all available plants from Supabase
+    // Загрузка всех доступных растений из Supabase
     const loadPlants = async () => {
       setIsLoading(true);
       try {
@@ -30,10 +30,10 @@ const Index = () => {
         setPlants(data || []);
         setFilteredPlants(data || []);
       } catch (error) {
-        console.error('Error loading plants:', error);
+        console.error('Ошибка загрузки растений:', error);
         toast({
-          title: "Error",
-          description: "Failed to load plants. Please try again.",
+          title: "Ошибка",
+          description: "Не удалось загрузить растения. Пожалуйста, попробуйте снова.",
           variant: "destructive",
         });
       } finally {
@@ -45,11 +45,11 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    // Apply filters
+    // Применение фильтров
     const applyFilters = () => {
       let result = [...plants];
       
-      // Apply search filter
+      // Применение фильтра поиска
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         result = result.filter(
@@ -59,12 +59,12 @@ const Index = () => {
         );
       }
       
-      // Apply plant type filter
+      // Применение фильтра типа растения
       if (plantType !== 'all') {
         result = result.filter(plant => plant.type === plantType);
       }
       
-      // Apply location filter
+      // Применение фильтра местоположения
       if (location) {
         result = result.filter(
           plant => plant.location && plant.location.toLowerCase().includes(location.toLowerCase())
@@ -87,11 +87,11 @@ const Index = () => {
     <Layout>
       <div className="mb-8 text-center">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-          Find Your Perfect Plant Exchange
+          Найдите идеальный обмен растениями
         </h1>
         <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-          Browse plants shared by our community and find your next green companion. 
-          Offer one of your plants in exchange and grow your collection!
+          Просматривайте растения, которыми делятся участники нашего сообщества, и найдите своего следующего зеленого компаньона. 
+          Предложите одно из своих растений в обмен и пополните свою коллекцию!
         </p>
       </div>
 
@@ -109,13 +109,13 @@ const Index = () => {
         <div className="flex justify-center items-center min-h-[300px]">
           <div className="flex flex-col items-center">
             <Leaf className="h-12 w-12 text-plant-500 animate-leaf-sway" />
-            <p className="mt-4 text-gray-600">Loading plants...</p>
+            <p className="mt-4 text-gray-600">Загрузка растений...</p>
           </div>
         </div>
       ) : (
         <PlantGrid 
           plants={filteredPlants} 
-          emptyMessage="No plants found matching your criteria. Try adjusting your filters."
+          emptyMessage="Не найдено растений, соответствующих вашим критериям. Попробуйте изменить фильтры."
         />
       )}
     </Layout>
