@@ -21,7 +21,9 @@ import {
   CheckCheck, 
   X, 
   ArrowLeftRight,
-  Check
+  Check,
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 
 const getStatusBadge = (status: string) => {
@@ -47,6 +49,7 @@ const ExchangesPage = () => {
   const [availablePlants, setAvailablePlants] = useState<Plant[]>([]);
   const [selectedPlants, setSelectedPlants] = useState<string[]>([]);
   const [selectingFor, setSelectingFor] = useState<string | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -227,11 +230,25 @@ const ExchangesPage = () => {
 
   const handleSelectPlants = async (exchangeId: string, senderId: string) => {
     console.log("Выбор растений для обмена:", exchangeId, "отправитель:", senderId);
-    const plants = await fetchAvailablePlants(senderId);
-    console.log("Полученные растения для выбора:", plants);
-    setAvailablePlants(plants);
-    setSelectedPlants([]);
-    setSelectingFor(exchangeId);
+    
+    setIsActionLoading(true);
+    
+    try {
+      const plants = await fetchAvailablePlants(senderId);
+      console.log("Полученные растения для выбора:", plants);
+      setAvailablePlants(plants);
+      setSelectedPlants([]);
+      setSelectingFor(exchangeId);
+    } catch (error) {
+      console.error("Ошибка при получении растений для выбора:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить растения для выбора. Пожалуйста, попробуйте снова.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const handlePlantSelectionChange = (plantId: string) => {
@@ -247,26 +264,31 @@ const ExchangesPage = () => {
   const handleSubmitSelection = async () => {
     if (!selectingFor || selectedPlants.length === 0) return;
     
+    setIsActionLoading(true);
+    
     try {
       console.log("Обновление обмена:", selectingFor, "с выбранными растениями:", selectedPlants);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('exchange_offers')
         .update({
           selected_plants_ids: selectedPlants,
           status: 'awaiting_confirmation'
         })
-        .eq('id', selectingFor);
+        .eq('id', selectingFor)
+        .select();
       
       if (error) {
         console.error("Ошибка при обновлении обмена:", error);
         toast({
           title: "Ошибка",
-          description: "Не удалось обновить обмен. Пожалуйста, попробуйте снова.",
+          description: `Не удалось обновить обмен: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
+      
+      console.log("Результат обновления обмена:", data);
       
       toast({
         title: "Успех",
@@ -282,30 +304,46 @@ const ExchangesPage = () => {
         description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
   const handleConfirmExchange = async (exchangeId: string) => {
+    setIsActionLoading(true);
+    
     try {
       const exchange = exchanges.find(e => e.id === exchangeId);
-      if (!exchange) return;
+      if (!exchange) {
+        toast({
+          title: "Ошибка",
+          description: "Обмен не найден.",
+          variant: "destructive",
+        });
+        setIsActionLoading(false);
+        return;
+      }
       
       console.log("Подтверждение обмена:", exchangeId);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('exchange_offers')
         .update({ status: 'completed' })
-        .eq('id', exchangeId);
+        .eq('id', exchangeId)
+        .select();
       
       if (error) {
         console.error("Ошибка при подтверждении обмена:", error);
         toast({
           title: "Ошибка",
-          description: "Не удалось подтвердить обмен. Пожалуйста, попробуйте снова.",
+          description: `Не удалось подтвердить обмен: ${error.message}`,
           variant: "destructive",
         });
+        setIsActionLoading(false);
         return;
       }
+      
+      console.log("Результат подтверждения обмена:", data);
       
       // Обновляем статус растений на "обменено"
       const plantsToUpdate = [exchange.sender_plant_id, exchange.receiver_plant_id, ...(exchange.selected_plants_ids || [])];
@@ -334,28 +372,36 @@ const ExchangesPage = () => {
         description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
   const handleCancelExchange = async (exchangeId: string) => {
+    setIsActionLoading(true);
+    
     try {
       console.log("Отмена обмена:", exchangeId);
       
       // Используем UPDATE вместо удаления, чтобы изменить статус на "cancelled"
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
-        .eq('id', exchangeId);
+        .eq('id', exchangeId)
+        .select();
       
       if (error) {
         console.error("Ошибка при отмене обмена:", error);
         toast({
           title: "Ошибка",
-          description: "Не удалось отменить обмен. Пожалуйста, попробуйте снова.",
+          description: `Не удалось отменить обмен: ${error.message}`,
           variant: "destructive",
         });
+        setIsActionLoading(false);
         return;
       }
+      
+      console.log("Результат отмены обмена:", data);
       
       toast({
         title: "Обмен отменен",
@@ -370,6 +416,8 @@ const ExchangesPage = () => {
         description: "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -404,6 +452,7 @@ const ExchangesPage = () => {
           
           {isLoading && (
             <div className="text-center py-4">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
               <p>Загрузка обменов...</p>
             </div>
           )}
@@ -525,8 +574,15 @@ const ExchangesPage = () => {
                   </CardContent>
                   
                   <CardFooter className="border-t bg-muted/30 flex flex-wrap gap-2 justify-end">
+                    {isActionLoading && (
+                      <div className="flex items-center mr-auto">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-sm">Обработка...</span>
+                      </div>
+                    )}
+                  
                     {/* Кнопка выбора растений - видна только получателю, когда статус "ожидает" */}
-                    {user && exchange.status === 'pending' && exchange.receiver_id === user.id && (
+                    {user && exchange.status === 'pending' && exchange.receiver_id === user.id && !isActionLoading && (
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" onClick={() => handleSelectPlants(exchange.id, exchange.sender_id)}>
@@ -537,7 +593,10 @@ const ExchangesPage = () => {
                           <div className="space-y-4">
                             <h4 className="font-medium">Выберите растения от {exchange.sender?.username}</h4>
                             {availablePlants.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">Доступных растений не найдено.</p>
+                              <div className="flex flex-col items-center justify-center p-4 text-center">
+                                <AlertTriangle className="h-6 w-6 text-amber-500 mb-2" />
+                                <p className="text-sm text-muted-foreground">Доступных растений не найдено.</p>
+                              </div>
                             ) : (
                               <div className="space-y-2 max-h-60 overflow-y-auto">
                                 {availablePlants.map(plant => (
@@ -546,6 +605,7 @@ const ExchangesPage = () => {
                                       id={`plant-${plant.id}`} 
                                       checked={selectedPlants.includes(plant.id)}
                                       onCheckedChange={() => handlePlantSelectionChange(plant.id)}
+                                      className="mt-1"
                                     />
                                     <label htmlFor={`plant-${plant.id}`} className="text-sm cursor-pointer flex-1">
                                       <div>{plant.name}</div>
@@ -587,14 +647,14 @@ const ExchangesPage = () => {
                     )}
                     
                     {/* Кнопка подтверждения обмена - видна отправителю, когда статус "ожидает подтверждения" */}
-                    {user && exchange.status === 'awaiting_confirmation' && exchange.sender_id === user.id && (
+                    {user && exchange.status === 'awaiting_confirmation' && exchange.sender_id === user.id && !isActionLoading && (
                       <Button size="sm" variant="default" onClick={() => handleConfirmExchange(exchange.id)} className="gap-1">
                         <Check className="h-4 w-4" /> Подтвердить обмен
                       </Button>
                     )}
                     
                     {/* Кнопка отмены - видна обеим сторонам для состояний "ожидает" и "ожидает подтверждения" */}
-                    {user && ['pending', 'awaiting_confirmation'].includes(exchange.status) && (
+                    {user && ['pending', 'awaiting_confirmation'].includes(exchange.status) && !isActionLoading && (
                       <Button variant="destructive" size="sm" onClick={() => handleCancelExchange(exchange.id)} className="gap-1">
                         <X className="h-4 w-4" /> Отменить
                       </Button>
