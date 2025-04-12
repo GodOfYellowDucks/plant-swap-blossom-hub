@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +50,7 @@ const ExchangesPage = () => {
   const [selectedPlants, setSelectedPlants] = useState<string[]>([]);
   const [selectingFor, setSelectingFor] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -65,6 +67,7 @@ const ExchangesPage = () => {
 
       console.log("Получение обменов для пользователя:", user.id);
 
+      // Get all exchange offers related to the user
       const { data: exchangeData, error: exchangeError } = await supabase
         .from('exchange_offers')
         .select(`
@@ -99,38 +102,38 @@ const ExchangesPage = () => {
       const completeExchanges: Exchange[] = [];
       
       for (const exchange of exchangeData) {
-        let status: ExchangeStatus = 'pending';
-        if (exchange.status === 'pending' || 
-            exchange.status === 'awaiting_confirmation' || 
-            exchange.status === 'completed' || 
-            exchange.status === 'cancelled') {
-          status = exchange.status as ExchangeStatus;
-        }
+        // Ensure status is a valid ExchangeStatus
+        let status: ExchangeStatus = exchange.status as ExchangeStatus || 'pending';
         
+        // Get sender plant details
         const { data: senderPlantData, error: senderPlantError } = await supabase
           .from('plants')
           .select('*')
           .eq('id', exchange.sender_plant_id)
           .single();
         
+        // Get receiver plant details
         const { data: receiverPlantData, error: receiverPlantError } = await supabase
           .from('plants')
           .select('*')
           .eq('id', exchange.receiver_plant_id)
           .single();
         
+        // Get sender profile details
         const { data: senderProfileData, error: senderProfileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', exchange.sender_id)
           .single();
         
+        // Get receiver profile details
         const { data: receiverProfileData, error: receiverProfileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', exchange.receiver_id)
           .single();
         
+        // Get selected plants if any
         let selectedPlants: Plant[] = [];
         if (exchange.selected_plants_ids && exchange.selected_plants_ids.length > 0) {
           const { data: selectedPlantsData, error: selectedPlantsError } = await supabase
@@ -145,6 +148,7 @@ const ExchangesPage = () => {
           }
         }
         
+        // Default values in case of missing data
         const defaultPlant: Plant = {
           id: 'unknown',
           name: 'Неизвестное растение',
@@ -157,6 +161,7 @@ const ExchangesPage = () => {
           username: 'Неизвестный пользователь',
         };
         
+        // Create complete exchange object with all related data
         const completeExchange: Exchange = {
           id: exchange.id,
           sender_id: exchange.sender_id,
@@ -242,6 +247,7 @@ const ExchangesPage = () => {
       setAvailablePlants(plants);
       setSelectedPlants([]);
       setSelectingFor(exchangeId);
+      setPopoverOpen(true);
     } catch (error) {
       console.error("Ошибка при получении растений для выбора:", error);
       toast({
@@ -255,6 +261,7 @@ const ExchangesPage = () => {
   };
 
   const handlePlantSelectionChange = (plantId: string, selected: boolean) => {
+    console.log("Изменение выбора растения:", plantId, selected);
     setSelectedPlants(current => {
       if (selected) {
         return [...current, plantId];
@@ -299,7 +306,8 @@ const ExchangesPage = () => {
       });
       
       setSelectingFor(null);
-      fetchExchanges();
+      setPopoverOpen(false);
+      await fetchExchanges(); // Refresh exchanges list
     } catch (error) {
       console.error("Непредвиденная ошибка при обновлении обмена:", error);
       toast({
@@ -332,8 +340,7 @@ const ExchangesPage = () => {
       const { data, error } = await supabase
         .from('exchange_offers')
         .update({ status: 'completed' })
-        .eq('id', exchangeId)
-        .select();
+        .eq('id', exchangeId);
       
       if (error) {
         console.error("Ошибка при подтверждении обмена:", error);
@@ -348,6 +355,7 @@ const ExchangesPage = () => {
       
       console.log("Результат подтверждения обмена:", data);
       
+      // Update plant status to 'exchanged'
       const plantsToUpdate = [exchange.sender_plant_id, exchange.receiver_plant_id, ...(exchange.selected_plants_ids || [])];
       
       for (const plantId of plantsToUpdate) {
@@ -366,7 +374,7 @@ const ExchangesPage = () => {
         description: "Обмен подтвержден успешно!",
       });
       
-      fetchExchanges();
+      await fetchExchanges(); // Refresh exchanges list
     } catch (error) {
       console.error("Непредвиденная ошибка при подтверждении обмена:", error);
       toast({
@@ -385,34 +393,7 @@ const ExchangesPage = () => {
     try {
       console.log("Отмена обмена:", exchangeId);
       
-      const { data: exchange, error: getError } = await supabase
-        .from('exchange_offers')
-        .select('*')
-        .eq('id', exchangeId)
-        .single();
-      
-      if (getError) {
-        console.error("Ошибка при получении данных обмена:", getError);
-        toast({
-          title: "Ошибка",
-          description: `Не удалось получить данные обмена: ${getError.message}`,
-          variant: "destructive",
-        });
-        setIsActionLoading(false);
-        return;
-      }
-      
-      const validStatus = ['pending', 'awaiting_confirmation', 'completed', 'cancelled'];
-      if (!validStatus.includes('cancelled')) {
-        toast({
-          title: "Ошибка системы",
-          description: "Статус 'cancelled' не поддерживается. Обратитесь к администратору.",
-          variant: "destructive",
-        });
-        setIsActionLoading(false);
-        return;
-      }
-      
+      // First try to update the status to 'cancelled'
       const { data, error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
@@ -421,56 +402,35 @@ const ExchangesPage = () => {
       if (error) {
         console.error("Ошибка при отмене обмена:", error);
         
-        if (error.message.includes('violates check constraint')) {
+        // If update fails, attempt to delete the exchange instead
+        const { error: deleteError } = await supabase
+          .from('exchange_offers')
+          .delete()
+          .eq('id', exchangeId);
+        
+        if (deleteError) {
+          console.error("Ошибка при удалении обмена:", deleteError);
           toast({
-            title: "Системная ошибка",
-            description: "Невозможно установить статус 'cancelled'. Используется альтернативный метод...",
+            title: "Ошибка",
+            description: `Не удалось отменить или удалить обмен: ${deleteError.message}`,
             variant: "destructive",
           });
-          
-          const { error: deleteError } = await supabase
-            .from('exchange_offers')
-            .delete()
-            .eq('id', exchangeId);
-          
-          if (deleteError) {
-            console.error("Ошибка при удалении обмена:", deleteError);
-            toast({
-              title: "Ошибка",
-              description: `Не удалось удалить обмен: ${deleteError.message}`,
-              variant: "destructive",
-            });
-            setIsActionLoading(false);
-            return;
-          }
-          
-          toast({
-            title: "Успех",
-            description: "Обмен был удален из системы.",
-          });
-          
-          fetchExchanges();
           setIsActionLoading(false);
           return;
         }
         
         toast({
-          title: "Ошибка",
-          description: `Не удалось отменить обмен: ${error.message}`,
-          variant: "destructive",
+          title: "Обмен удален",
+          description: "Обмен был удален из системы.",
         });
-        setIsActionLoading(false);
-        return;
+      } else {
+        toast({
+          title: "Обмен отменен",
+          description: "Обмен был успешно отменен.",
+        });
       }
       
-      console.log("Результат отмены обмена:", data);
-      
-      toast({
-        title: "Обмен отменен",
-        description: "Обмен был отменен.",
-      });
-      
-      fetchExchanges();
+      await fetchExchanges(); // Refresh exchanges list
     } catch (error) {
       console.error("Непредвиденная ошибка при отмене обмена:", error);
       toast({
@@ -654,11 +614,13 @@ const ExchangesPage = () => {
                       </Button>
                     )}
                     
-                    {selectingFor === exchange.id && (
-                      <Popover open={true} onOpenChange={(open) => {
-                        if (!open) setSelectingFor(null);
-                      }}>
-                        <PopoverContent className="w-[90vw] max-w-3xl p-0" align="center">
+                    {/* Plant selection popover */}
+                    {selectingFor && (
+                      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <div style={{ display: 'none' }}></div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[90vw] max-w-4xl p-0" align="center">
                           <div className="p-4 border-b">
                             <h4 className="font-medium">Выберите растения для обмена</h4>
                             <p className="text-sm text-muted-foreground">Выберите одно или несколько растений, которые вы хотите получить в обмен.</p>
@@ -683,16 +645,24 @@ const ExchangesPage = () => {
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => setSelectingFor(null)}
+                              onClick={() => {
+                                setSelectingFor(null);
+                                setPopoverOpen(false);
+                              }}
                             >
                               Отмена
                             </Button>
                             <Button 
                               size="sm" 
                               onClick={handleSubmitSelection}
-                              disabled={selectedPlants.length === 0}
+                              disabled={selectedPlants.length === 0 || isActionLoading}
                             >
-                              Отправить
+                              {isActionLoading ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  Отправка...
+                                </>
+                              ) : 'Отправить'}
                             </Button>
                           </div>
                         </PopoverContent>
