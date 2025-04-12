@@ -3,15 +3,23 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Repeat } from 'lucide-react';
+import { MapPin, Repeat, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface PlantCardProps {
   plant: any;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: (selected: boolean) => void;
 }
 
-const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
+const PlantCard: React.FC<PlantCardProps> = ({ 
+  plant, 
+  selectable = false, 
+  selected = false, 
+  onSelect 
+}) => {
   const { id, name, species, location, image_url, type, status } = plant;
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -26,6 +34,14 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
     } else {
       // В противном случае переходим на страницу растения
       navigate(`/plants/${id}`);
+    }
+  };
+
+  const handleSelectClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onSelect) {
+      onSelect(!selected);
     }
   };
 
@@ -44,8 +60,20 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant }) => {
 
   return (
     <Link to={`/plants/${id}`} className="block h-full">
-      <Card className="overflow-hidden h-full plant-card-hover bg-white relative">
+      <Card className={`overflow-hidden h-full plant-card-hover bg-white relative ${selectable ? 'cursor-pointer' : ''}`}>
         <div className="relative h-48 overflow-hidden">
+          {selectable && (
+            <div className="absolute top-2 left-2 z-10">
+              <Button
+                size="sm"
+                variant={selected ? "default" : "outline"}
+                className={`rounded-full p-2 ${selected ? 'bg-green-500 hover:bg-green-600' : 'bg-white hover:bg-gray-100'}`}
+                onClick={handleSelectClick}
+              >
+                {selected && <Check className="h-4 w-4 text-white" />}
+              </Button>
+            </div>
+          )}
           <img 
             src={image_url || '/placeholder.svg'} 
             alt={name} 
