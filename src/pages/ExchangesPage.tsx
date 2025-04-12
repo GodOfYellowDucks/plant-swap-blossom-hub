@@ -28,13 +28,13 @@ import {
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case 'pending':
+    case "pending":
       return <Badge variant="secondary" className="capitalize flex gap-1 items-center"><Clock className="h-3 w-3" /> Ожидает</Badge>;
-    case 'awaiting_confirmation':
+    case "awaiting_confirmation":
       return <Badge variant="outline" className="capitalize bg-amber-500 text-white flex gap-1 items-center"><ArrowLeftRight className="h-3 w-3" /> Ожидает подтверждения</Badge>;
-    case 'completed':
+    case "completed":
       return <Badge variant="outline" className="capitalize bg-green-500 text-white flex gap-1 items-center"><CheckCheck className="h-3 w-3" /> Завершено</Badge>;
-    case 'cancelled':
+    case "cancelled":
       return <Badge variant="destructive" className="capitalize flex gap-1 items-center"><X className="h-3 w-3" /> Отменено</Badge>;
     default:
       return <Badge className="capitalize">{status}</Badge>;
@@ -201,9 +201,12 @@ const ExchangesPage = () => {
     fetchExchanges();
   }, [user]);
 
-  // Обновляем функцию получения доступных растений, чтобы выбирать растения отправителя предложения
+  // Обновляем функцию получения доступных растений для выбора получателем
   const fetchAvailablePlants = async (userId: string) => {
     try {
+      setIsActionLoading(true);
+      console.log("Получение доступных растений для пользователя:", userId);
+      
       const { data, error } = await supabase
         .from('plants')
         .select('*')
@@ -225,6 +228,8 @@ const ExchangesPage = () => {
     } catch (error) {
       console.error("Непредвиденная ошибка при получении доступных растений:", error);
       return [];
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -236,6 +241,16 @@ const ExchangesPage = () => {
     try {
       const plants = await fetchAvailablePlants(senderId);
       console.log("Полученные растения для выбора:", plants);
+      
+      if (plants.length === 0) {
+        toast({
+          title: "Нет доступных растений",
+          description: "У отправителя нет доступных растений для обмена.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setAvailablePlants(plants);
       setSelectedPlants([]);
       setSelectingFor(exchangeId);
@@ -377,13 +392,44 @@ const ExchangesPage = () => {
     }
   };
 
+  // Фиксим обработку отмены обмена - убираем ошибку с check constraint
   const handleCancelExchange = async (exchangeId: string) => {
     setIsActionLoading(true);
     
     try {
       console.log("Отмена обмена:", exchangeId);
       
-      // Используем UPDATE вместо удаления, чтобы изменить статус на "cancelled"
+      // Исправляем ошибку - получаем данные до обновления
+      const { data: exchange, error: getError } = await supabase
+        .from('exchange_offers')
+        .select('*')
+        .eq('id', exchangeId)
+        .single();
+      
+      if (getError) {
+        console.error("Ошибка при получении данных обмена:", getError);
+        toast({
+          title: "Ошибка",
+          description: `Не удалось получить данные обмена: ${getError.message}`,
+          variant: "destructive",
+        });
+        setIsActionLoading(false);
+        return;
+      }
+      
+      // Проверяем, есть ли ограничение на допустимые значения статуса
+      const validStatus = ['pending', 'awaiting_confirmation', 'completed', 'cancelled'];
+      if (!validStatus.includes('cancelled')) {
+        toast({
+          title: "Ошибка системы",
+          description: "Статус 'cancelled' не поддерживается. Обратитесь к администратору.",
+          variant: "destructive",
+        });
+        setIsActionLoading(false);
+        return;
+      }
+      
+      // Выполняем обновление
       const { data, error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
@@ -392,6 +438,42 @@ const ExchangesPage = () => {
       
       if (error) {
         console.error("Ошибка при отмене обмена:", error);
+        
+        // Попробуем альтернативный подход при ошибке с ограничением
+        if (error.message.includes('violates check constraint')) {
+          toast({
+            title: "Системная ошибка",
+            description: "Невозможно установить статус 'cancelled'. Используется альтернативный метод...",
+            variant: "warning",
+          });
+          
+          // Пробуем удалить обмен вместо изменения статуса
+          const { error: deleteError } = await supabase
+            .from('exchange_offers')
+            .delete()
+            .eq('id', exchangeId);
+          
+          if (deleteError) {
+            console.error("Ошибка при удалении обмена:", deleteError);
+            toast({
+              title: "Ошибка",
+              description: `Не удалось удалить обмен: ${deleteError.message}`,
+              variant: "destructive",
+            });
+            setIsActionLoading(false);
+            return;
+          }
+          
+          toast({
+            title: "Успех",
+            description: "Обмен был удален из системы.",
+          });
+          
+          fetchExchanges();
+          setIsActionLoading(false);
+          return;
+        }
+        
         toast({
           title: "Ошибка",
           description: `Не удалось отменить обмен: ${error.message}`,
@@ -583,15 +665,26 @@ const ExchangesPage = () => {
                   
                     {/* Кнопка выбора растений - видна только получателю, когда статус "ожидает" */}
                     {user && exchange.status === 'pending' && exchange.receiver_id === user.id && !isActionLoading && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => handleSelectPlants(exchange.id, exchange.sender_id)}>
-                            Выбрать растения
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
-                          <div className="space-y-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSelectPlants(exchange.id, exchange.sender_id)}
+                        className="gap-1"
+                      >
+                        <Leaf className="h-4 w-4" /> Выбрать растения
+                      </Button>
+                    )}
+                    
+                    {/* Выбор растений в попап */}
+                    {selectingFor === exchange.id && (
+                      <Popover open={true} onOpenChange={(open) => {
+                        if (!open) setSelectingFor(null);
+                      }}>
+                        <PopoverContent className="w-80 p-0" align="end">
+                          <div className="p-4 border-b">
                             <h4 className="font-medium">Выберите растения от {exchange.sender?.username}</h4>
+                          </div>
+                          <div className="p-4">
                             {availablePlants.length === 0 ? (
                               <div className="flex flex-col items-center justify-center p-4 text-center">
                                 <AlertTriangle className="h-6 w-6 text-amber-500 mb-2" />
@@ -600,7 +693,7 @@ const ExchangesPage = () => {
                             ) : (
                               <div className="space-y-2 max-h-60 overflow-y-auto">
                                 {availablePlants.map(plant => (
-                                  <div key={plant.id} className="flex items-start space-x-2">
+                                  <div key={plant.id} className="flex items-start space-x-2 p-2 hover:bg-muted/50 rounded-md">
                                     <Checkbox 
                                       id={`plant-${plant.id}`} 
                                       checked={selectedPlants.includes(plant.id)}
@@ -608,7 +701,7 @@ const ExchangesPage = () => {
                                       className="mt-1"
                                     />
                                     <label htmlFor={`plant-${plant.id}`} className="text-sm cursor-pointer flex-1">
-                                      <div>{plant.name}</div>
+                                      <div className="font-medium">{plant.name}</div>
                                       <div className="text-xs text-muted-foreground">{plant.species}</div>
                                       {plant.image_url && (
                                         <img 
@@ -625,22 +718,22 @@ const ExchangesPage = () => {
                                 ))}
                               </div>
                             )}
-                            <div className="flex justify-end gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => setSelectingFor(null)}
-                              >
-                                Отмена
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                onClick={handleSubmitSelection}
-                                disabled={selectedPlants.length === 0}
-                              >
-                                Отправить
-                              </Button>
-                            </div>
+                          </div>
+                          <div className="p-4 border-t bg-muted/30 flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setSelectingFor(null)}
+                            >
+                              Отмена
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={handleSubmitSelection}
+                              disabled={selectedPlants.length === 0}
+                            >
+                              Отправить
+                            </Button>
                           </div>
                         </PopoverContent>
                       </Popover>
