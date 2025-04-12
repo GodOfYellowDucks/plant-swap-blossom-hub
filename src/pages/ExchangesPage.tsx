@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
+import PlantGrid from '@/components/PlantGrid';
 import { 
   AlertCircle, 
   Clock, 
@@ -254,12 +254,12 @@ const ExchangesPage = () => {
     }
   };
 
-  const handlePlantSelectionChange = (plantId: string) => {
+  const handlePlantSelectionChange = (plantId: string, selected: boolean) => {
     setSelectedPlants(current => {
-      if (current.includes(plantId)) {
-        return current.filter(id => id !== plantId);
-      } else {
+      if (selected) {
         return [...current, plantId];
+      } else {
+        return current.filter(id => id !== plantId);
       }
     });
   };
@@ -416,8 +416,7 @@ const ExchangesPage = () => {
       const { data, error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
-        .eq('id', exchangeId)
-        .select();
+        .eq('id', exchangeId);
       
       if (error) {
         console.error("Ошибка при отмене обмена:", error);
@@ -659,42 +658,24 @@ const ExchangesPage = () => {
                       <Popover open={true} onOpenChange={(open) => {
                         if (!open) setSelectingFor(null);
                       }}>
-                        <PopoverContent className="w-80 p-0" align="end">
+                        <PopoverContent className="w-[90vw] max-w-3xl p-0" align="center">
                           <div className="p-4 border-b">
-                            <h4 className="font-medium">Выберите растения от {exchange.sender?.username}</h4>
+                            <h4 className="font-medium">Выберите растения для обмена</h4>
+                            <p className="text-sm text-muted-foreground">Выберите одно или несколько растений, которые вы хотите получить в обмен.</p>
                           </div>
-                          <div className="p-4">
-                            {availablePlants.length === 0 ? (
+                          <div className="p-4 max-h-[70vh] overflow-y-auto">
+                            {availablePlants.length > 0 ? (
+                              <PlantGrid 
+                                plants={availablePlants} 
+                                selectable={true}
+                                selectedPlantIds={selectedPlants}
+                                onPlantSelect={handlePlantSelectionChange}
+                                emptyMessage="У отправителя нет доступных растений для обмена."
+                              />
+                            ) : (
                               <div className="flex flex-col items-center justify-center p-4 text-center">
                                 <AlertTriangle className="h-6 w-6 text-amber-500 mb-2" />
                                 <p className="text-sm text-muted-foreground">Доступных растений не найдено.</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2 max-h-60 overflow-y-auto">
-                                {availablePlants.map(plant => (
-                                  <div key={plant.id} className="flex items-start space-x-2 p-2 hover:bg-muted/50 rounded-md">
-                                    <Checkbox 
-                                      id={`plant-${plant.id}`} 
-                                      checked={selectedPlants.includes(plant.id)}
-                                      onCheckedChange={() => handlePlantSelectionChange(plant.id)}
-                                      className="mt-1"
-                                    />
-                                    <label htmlFor={`plant-${plant.id}`} className="text-sm cursor-pointer flex-1">
-                                      <div className="font-medium">{plant.name}</div>
-                                      <div className="text-xs text-muted-foreground">{plant.species}</div>
-                                      {plant.image_url && (
-                                        <img 
-                                          src={plant.image_url} 
-                                          alt={plant.name} 
-                                          className="w-20 h-20 object-cover rounded-md mt-1"
-                                          onError={(e) => {
-                                            (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                          }}
-                                        />
-                                      )}
-                                    </label>
-                                  </div>
-                                ))}
                               </div>
                             )}
                           </div>
