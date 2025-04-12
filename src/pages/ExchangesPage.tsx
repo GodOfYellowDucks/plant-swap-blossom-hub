@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +65,6 @@ const ExchangesPage = () => {
 
       console.log("Получение обменов для пользователя:", user.id);
 
-      // Сначала получаем предложения обмена
       const { data: exchangeData, error: exchangeError } = await supabase
         .from('exchange_offers')
         .select(`
@@ -98,10 +96,8 @@ const ExchangesPage = () => {
 
       console.log("Исходные данные обмена:", exchangeData);
       
-      // Создаем массив для хранения полных объектов обмена
       const completeExchanges: Exchange[] = [];
       
-      // Обрабатываем каждый обмен для получения связанных данных
       for (const exchange of exchangeData) {
         let status: ExchangeStatus = 'pending';
         if (exchange.status === 'pending' || 
@@ -111,35 +107,30 @@ const ExchangesPage = () => {
           status = exchange.status as ExchangeStatus;
         }
         
-        // Получаем данные о растении отправителя
         const { data: senderPlantData, error: senderPlantError } = await supabase
           .from('plants')
           .select('*')
           .eq('id', exchange.sender_plant_id)
           .single();
         
-        // Получаем данные о растении получателя
         const { data: receiverPlantData, error: receiverPlantError } = await supabase
           .from('plants')
           .select('*')
           .eq('id', exchange.receiver_plant_id)
           .single();
         
-        // Получаем данные профиля отправителя
         const { data: senderProfileData, error: senderProfileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', exchange.sender_id)
           .single();
         
-        // Получаем данные профиля получателя
         const { data: receiverProfileData, error: receiverProfileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', exchange.receiver_id)
           .single();
         
-        // Получаем выбранные растения, если они есть
         let selectedPlants: Plant[] = [];
         if (exchange.selected_plants_ids && exchange.selected_plants_ids.length > 0) {
           const { data: selectedPlantsData, error: selectedPlantsError } = await supabase
@@ -154,7 +145,6 @@ const ExchangesPage = () => {
           }
         }
         
-        // Значения по умолчанию в случае ошибок
         const defaultPlant: Plant = {
           id: 'unknown',
           name: 'Неизвестное растение',
@@ -167,7 +157,6 @@ const ExchangesPage = () => {
           username: 'Неизвестный пользователь',
         };
         
-        // Создаем полный объект обмена
         const completeExchange: Exchange = {
           id: exchange.id,
           sender_id: exchange.sender_id,
@@ -201,7 +190,6 @@ const ExchangesPage = () => {
     fetchExchanges();
   }, [user]);
 
-  // Обновляем функцию получения доступных растений для выбора получателем
   const fetchAvailablePlants = async (userId: string) => {
     try {
       setIsActionLoading(true);
@@ -360,7 +348,6 @@ const ExchangesPage = () => {
       
       console.log("Результат подтверждения обмена:", data);
       
-      // Обновляем статус растений на "обменено"
       const plantsToUpdate = [exchange.sender_plant_id, exchange.receiver_plant_id, ...(exchange.selected_plants_ids || [])];
       
       for (const plantId of plantsToUpdate) {
@@ -392,14 +379,12 @@ const ExchangesPage = () => {
     }
   };
 
-  // Фиксим обработку отмены обмена - убираем ошибку с check constraint
   const handleCancelExchange = async (exchangeId: string) => {
     setIsActionLoading(true);
     
     try {
       console.log("Отмена обмена:", exchangeId);
       
-      // Исправляем ошибку - получаем данные до обновления
       const { data: exchange, error: getError } = await supabase
         .from('exchange_offers')
         .select('*')
@@ -417,7 +402,6 @@ const ExchangesPage = () => {
         return;
       }
       
-      // Проверяем, есть ли ограничение на допустимые значения статуса
       const validStatus = ['pending', 'awaiting_confirmation', 'completed', 'cancelled'];
       if (!validStatus.includes('cancelled')) {
         toast({
@@ -429,7 +413,6 @@ const ExchangesPage = () => {
         return;
       }
       
-      // Выполняем обновление
       const { data, error } = await supabase
         .from('exchange_offers')
         .update({ status: 'cancelled' })
@@ -439,15 +422,13 @@ const ExchangesPage = () => {
       if (error) {
         console.error("Ошибка при отмене обмена:", error);
         
-        // Попробуем альтернативный подход при ошибке с ограничением
         if (error.message.includes('violates check constraint')) {
           toast({
             title: "Системная ошибка",
             description: "Невозможно установить статус 'cancelled'. Используется альтернативный метод...",
-            variant: "warning",
+            variant: "destructive",
           });
           
-          // Пробуем удалить обмен вместо изменения статуса
           const { error: deleteError } = await supabase
             .from('exchange_offers')
             .delete()
@@ -663,7 +644,6 @@ const ExchangesPage = () => {
                       </div>
                     )}
                   
-                    {/* Кнопка выбора растений - видна только получателю, когда статус "ожидает" */}
                     {user && exchange.status === 'pending' && exchange.receiver_id === user.id && !isActionLoading && (
                       <Button 
                         variant="outline" 
@@ -675,7 +655,6 @@ const ExchangesPage = () => {
                       </Button>
                     )}
                     
-                    {/* Выбор растений в попап */}
                     {selectingFor === exchange.id && (
                       <Popover open={true} onOpenChange={(open) => {
                         if (!open) setSelectingFor(null);
@@ -739,14 +718,12 @@ const ExchangesPage = () => {
                       </Popover>
                     )}
                     
-                    {/* Кнопка подтверждения обмена - видна отправителю, когда статус "ожидает подтверждения" */}
                     {user && exchange.status === 'awaiting_confirmation' && exchange.sender_id === user.id && !isActionLoading && (
                       <Button size="sm" variant="default" onClick={() => handleConfirmExchange(exchange.id)} className="gap-1">
                         <Check className="h-4 w-4" /> Подтвердить обмен
                       </Button>
                     )}
                     
-                    {/* Кнопка отмены - видна обеим сторонам для состояний "ожидает" и "ожидает подтверждения" */}
                     {user && ['pending', 'awaiting_confirmation'].includes(exchange.status) && !isActionLoading && (
                       <Button variant="destructive" size="sm" onClick={() => handleCancelExchange(exchange.id)} className="gap-1">
                         <X className="h-4 w-4" /> Отменить
