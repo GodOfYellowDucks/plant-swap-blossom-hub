@@ -10,7 +10,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import PlantGrid from '@/components/PlantGrid';
 import { 
   AlertCircle, 
@@ -35,7 +42,7 @@ const getStatusBadge = (status: string) => {
     case "completed":
       return <Badge variant="outline" className="capitalize bg-green-500 text-white flex gap-1 items-center"><CheckCheck className="h-3 w-3" /> Завершено</Badge>;
     case "cancelled":
-      return <Badge variant="destructive" className="capitalize flex gap-1 items-center"><X className="h-3 w-3" /> Отменено</Badge>;
+      return <Badge variant="cancelled" className="capitalize flex gap-1 items-center"><X className="h-3 w-3" /> Отменено</Badge>;
     default:
       return <Badge className="capitalize">{status}</Badge>;
   }
@@ -50,7 +57,7 @@ const ExchangesPage = () => {
   const [selectedPlants, setSelectedPlants] = useState<string[]>([]);
   const [selectingFor, setSelectingFor] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -247,7 +254,7 @@ const ExchangesPage = () => {
       setAvailablePlants(plants);
       setSelectedPlants([]);
       setSelectingFor(exchangeId);
-      setPopoverOpen(true);
+      setDialogOpen(true);
     } catch (error) {
       console.error("Ошибка при получении растений для выбора:", error);
       toast({
@@ -303,10 +310,11 @@ const ExchangesPage = () => {
       toast({
         title: "Успех",
         description: "Растения для обмена выбраны успешно.",
+        variant: "success",
       });
       
       setSelectingFor(null);
-      setPopoverOpen(false);
+      setDialogOpen(false);
       await fetchExchanges(); // Refresh exchanges list
     } catch (error) {
       console.error("Непредвиденная ошибка при обновлении обмена:", error);
@@ -372,6 +380,7 @@ const ExchangesPage = () => {
       toast({
         title: "Успех",
         description: "Обмен подтвержден успешно!",
+        variant: "success",
       });
       
       await fetchExchanges(); // Refresh exchanges list
@@ -427,6 +436,7 @@ const ExchangesPage = () => {
         toast({
           title: "Обмен отменен",
           description: "Обмен был успешно отменен.",
+          variant: "cancelled",
         });
       }
       
@@ -504,7 +514,7 @@ const ExchangesPage = () => {
                         ? '#f59e0b' 
                         : exchange.status === 'completed' 
                           ? '#10b981' 
-                          : '#ef4444' 
+                          : '#ea384c' 
                   }}
                 >
                   <CardHeader className="bg-muted/50 pb-2">
@@ -614,61 +624,6 @@ const ExchangesPage = () => {
                       </Button>
                     )}
                     
-                    {/* Plant selection popover */}
-                    {selectingFor && (
-                      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <div style={{ display: 'none' }}></div>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[90vw] max-w-4xl p-0" align="center">
-                          <div className="p-4 border-b">
-                            <h4 className="font-medium">Выберите растения для обмена</h4>
-                            <p className="text-sm text-muted-foreground">Выберите одно или несколько растений, которые вы хотите получить в обмен.</p>
-                          </div>
-                          <div className="p-4 max-h-[70vh] overflow-y-auto">
-                            {availablePlants.length > 0 ? (
-                              <PlantGrid 
-                                plants={availablePlants} 
-                                selectable={true}
-                                selectedPlantIds={selectedPlants}
-                                onPlantSelect={handlePlantSelectionChange}
-                                emptyMessage="У отправителя нет доступных растений для обмена."
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center justify-center p-4 text-center">
-                                <AlertTriangle className="h-6 w-6 text-amber-500 mb-2" />
-                                <p className="text-sm text-muted-foreground">Доступных растений не найдено.</p>
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-4 border-t bg-muted/30 flex justify-end gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectingFor(null);
-                                setPopoverOpen(false);
-                              }}
-                            >
-                              Отмена
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              onClick={handleSubmitSelection}
-                              disabled={selectedPlants.length === 0 || isActionLoading}
-                            >
-                              {isActionLoading ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  Отправка...
-                                </>
-                              ) : 'Отправить'}
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                    
                     {user && exchange.status === 'awaiting_confirmation' && exchange.sender_id === user.id && !isActionLoading && (
                       <Button size="sm" variant="default" onClick={() => handleConfirmExchange(exchange.id)} className="gap-1">
                         <Check className="h-4 w-4" /> Подтвердить обмен
@@ -687,6 +642,56 @@ const ExchangesPage = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Plant selection dialog (replaces popover) */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Выберите растения для обмена</DialogTitle>
+            <DialogDescription>
+              Выберите одно или несколько растений, которые вы хотите получить в обмен.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto p-2">
+            {availablePlants.length > 0 ? (
+              <PlantGrid 
+                plants={availablePlants} 
+                selectable={true}
+                selectedPlantIds={selectedPlants}
+                onPlantSelect={handlePlantSelectionChange}
+                emptyMessage="У отправителя нет доступных растений для обмена."
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-4 text-center">
+                <AlertTriangle className="h-6 w-6 text-amber-500 mb-2" />
+                <p className="text-sm text-muted-foreground">Доступных растений не найдено.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="sm:justify-end flex flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSelectingFor(null);
+                setDialogOpen(false);
+              }}
+            >
+              Отмена
+            </Button>
+            <Button 
+              onClick={handleSubmitSelection}
+              disabled={selectedPlants.length === 0 || isActionLoading}
+            >
+              {isActionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Отправка...
+                </>
+              ) : 'Отправить'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
