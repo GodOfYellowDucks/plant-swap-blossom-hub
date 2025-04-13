@@ -1,123 +1,102 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, Repeat, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Edit2, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface PlantCardProps {
-  plant: any;
-  selectable?: boolean;
-  selected?: boolean;
-  onSelect?: (selected: boolean) => void;
+  plant: {
+    id: string;
+    name: string;
+    species: string;
+    subspecies?: string;
+    location?: string;
+    image_url?: string;
+    status?: string;
+    user_id: string;
+  };
+  showActions?: boolean;
+  onAction?: (action: string, plantId: string) => void;
 }
 
-const PlantCard: React.FC<PlantCardProps> = ({ 
-  plant, 
-  selectable = false, 
-  selected = false, 
-  onSelect 
-}) => {
-  const { id, name, species, location, image_url, type, status } = plant;
+const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isOwnPlant = user && user.id === plant.user_id;
 
-  const handleExchangeClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Если это собственное растение пользователя, переходим к обменам
-    if (user && user.id === plant.user_id) {
-      navigate('/exchanges');
-    } else {
-      // В противном случае переходим на страницу растения
-      navigate(`/plants/${id}`);
-    }
+  const handleCardClick = () => {
+    navigate(`/plants/${plant.id}`);
   };
 
-  const handleSelectClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onSelect) {
-      onSelect(!selected);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'available':
-        return <Badge className="capitalize bg-plant-100 text-plant-800 hover:bg-plant-200">Доступно</Badge>;
-      case 'exchanged':
-        return <Badge variant="destructive" className="capitalize">Обменено</Badge>;
-      case 'pending':
-        return <Badge variant="secondary" className="capitalize">Ожидает</Badge>;
-      default:
-        return <Badge className="capitalize">{status}</Badge>;
+    if (onAction) {
+      onAction('edit', plant.id);
     }
   };
 
   return (
-    <Link to={`/plants/${id}`} className="block h-full">
-      <Card className={`overflow-hidden h-full plant-card-hover bg-white relative ${selectable ? 'cursor-pointer' : ''}`}>
-        <div className="relative h-48 overflow-hidden">
-          {selectable && (
-            <div className="absolute top-2 left-2 z-10">
-              <Button
-                size="sm"
-                variant={selected ? "default" : "outline"}
-                className={`rounded-full p-2 ${selected ? 'bg-green-500 hover:bg-green-600' : 'bg-white hover:bg-gray-100'}`}
-                onClick={handleSelectClick}
-              >
-                {selected && <Check className="h-4 w-4 text-white" />}
-              </Button>
-            </div>
-          )}
-          <img 
-            src={image_url || '/placeholder.svg'} 
-            alt={name} 
-            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+    <Card 
+      className="group overflow-hidden transition-all hover:shadow-md cursor-pointer relative"
+      onClick={handleCardClick}
+    >
+      <div className="aspect-square w-full overflow-hidden bg-gray-100">
+        {plant.image_url ? (
+          <img
+            src={plant.image_url}
+            alt={plant.name}
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = '/placeholder.svg';
+              e.currentTarget.src = '/placeholder.svg';
             }}
           />
-          <div className="absolute top-2 right-2">
-            <Badge className="capitalize bg-plant-100 text-plant-800 hover:bg-plant-200">
-              {type || 'Растение'}
-            </Badge>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
+            <span className="text-xs">No image</span>
           </div>
-          {status !== 'available' && (
-            <div className="absolute top-2 left-2">
-              {getStatusBadge(status)}
-            </div>
-          )}
-          
-          {/* Показать кнопку обмена для собственных растений, которые участвуют в обмене */}
-          {user && user.id === plant.user_id && status === 'pending' && (
-            <div className="absolute bottom-2 right-2">
-              <Button 
-                size="sm" 
-                variant="secondary" 
-                className="bg-plant-500 hover:bg-plant-600 text-white p-1 h-8" 
-                onClick={handleExchangeClick}
-              >
-                <Repeat className="h-4 w-4 mr-1" />
-                Просмотр обмена
-              </Button>
-            </div>
-          )}
+        )}
+      </div>
+      
+      {plant.status && plant.status !== 'available' && (
+        <div className="absolute top-2 right-2">
+          <Badge variant={plant.status === 'exchanged' ? 'success' : 'default'}>
+            {plant.status.charAt(0).toUpperCase() + plant.status.slice(1)}
+          </Badge>
         </div>
-        <CardContent className="p-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-1">{name}</h3>
-          <p className="text-sm text-gray-500 mb-2">{species}</p>
-        </CardContent>
-        <CardFooter className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-600 flex items-center">
-          <MapPin className="h-4 w-4 mr-1 text-plant-500" />
-          {location || 'Нет местоположения'}
-        </CardFooter>
-      </Card>
-    </Link>
+      )}
+
+      {showActions && isOwnPlant && (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="absolute top-2 left-2 h-8 w-8 p-0 opacity-80 hover:opacity-100"
+          onClick={handleEditClick}
+        >
+          <Edit2 className="h-4 w-4" />
+        </Button>
+      )}
+      
+      <CardHeader className="p-3">
+        <CardTitle className="text-sm font-semibold line-clamp-1">{plant.name}</CardTitle>
+      </CardHeader>
+      
+      <CardContent className="p-3 pt-0 text-xs text-gray-500">
+        <p className="italic line-clamp-1">
+          {plant.species}
+          {plant.subspecies && <span> ({plant.subspecies})</span>}
+        </p>
+        
+        {plant.location && (
+          <div className="mt-2 flex items-center">
+            <MapPin className="mr-1 h-3 w-3" />
+            <span className="line-clamp-1">{plant.location}</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

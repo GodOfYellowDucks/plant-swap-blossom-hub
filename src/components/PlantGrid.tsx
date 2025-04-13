@@ -1,50 +1,47 @@
 
 import React from 'react';
 import PlantCard from './PlantCard';
-import { Frown } from 'lucide-react';
-
-interface Plant {
-  id: string;
-  name: string;
-  species: string;
-  image_url?: string;
-  location?: string;
-  [key: string]: any;
-}
+import { Leaf } from 'lucide-react';
 
 interface PlantGridProps {
-  plants: Plant[];
+  plants: Array<{
+    id: string;
+    name: string;
+    species: string;
+    subspecies?: string;
+    location?: string;
+    image_url?: string;
+    status?: string;
+    user_id: string;
+  }>;
   emptyMessage?: string;
-  onPlantSelect?: (plantId: string, selected: boolean) => void;
-  selectedPlantIds?: string[];
-  selectable?: boolean;
+  showActions?: boolean;
+  onAction?: (action: string, plantId: string) => void;
 }
 
-const PlantGrid: React.FC<PlantGridProps> = ({ 
+const PlantGrid = ({ 
   plants, 
-  emptyMessage = "Растения не найдены.",
-  onPlantSelect,
-  selectedPlantIds = [],
-  selectable = false
-}) => {
+  emptyMessage = "No plants found.", 
+  showActions = false,
+  onAction 
+}: PlantGridProps) => {
   if (!plants || plants.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg bg-muted/20">
-        <Frown className="w-12 h-12 text-muted-foreground mb-2" />
-        <p className="text-muted-foreground">{emptyMessage}</p>
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Leaf className="h-12 w-12 text-gray-300 mb-4" />
+        <p className="text-gray-500">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      {plants.map(plant => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {plants.map((plant) => (
         <PlantCard 
           key={plant.id} 
           plant={plant} 
-          selectable={selectable}
-          selected={selectedPlantIds.includes(plant.id)}
-          onSelect={selectable && onPlantSelect ? (selected) => onPlantSelect(plant.id, selected) : undefined}
+          showActions={showActions}
+          onAction={onAction}
         />
       ))}
     </div>

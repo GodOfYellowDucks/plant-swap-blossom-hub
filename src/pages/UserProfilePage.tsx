@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -20,7 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import ProfileEdit from '@/components/ProfileEdit';
 import AddPlantForm from '@/components/AddPlantForm';
-import { supabase } from '@/integrations/supabase/client';
+import PlantEditForm from '@/components/PlantEditForm';
+import { supabase, ensureStorageBuckets } from '@/integrations/supabase/client';
 
 const UserProfilePage = () => {
   const navigate = useNavigate();
@@ -32,11 +34,16 @@ const UserProfilePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingPlant, setIsAddingPlant] = useState(false);
+  const [isEditingPlant, setIsEditingPlant] = useState(false);
+  const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
   const [pendingExchanges, setPendingExchanges] = useState(0);
   
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
+    // Ensure storage buckets exist when component mounts
+    ensureStorageBuckets();
+    
     if (!user) {
       navigate('/login');
       return;
@@ -125,14 +132,25 @@ const UserProfilePage = () => {
     };
 
     loadUserData();
-  }, [user, navigate, isEditing, isAddingPlant]);
+  }, [user, navigate, isEditing, isAddingPlant, isEditingPlant]);
 
   const handleAddPlant = () => {
     setIsAddingPlant(true);
+    setIsEditingPlant(false);
+    setSelectedPlantId(null);
+  };
+
+  const handleEditPlant = (plantId: string) => {
+    setSelectedPlantId(plantId);
+    setIsEditingPlant(true);
+    setIsAddingPlant(false);
+    setIsEditing(false);
   };
 
   const handleEditProfile = () => {
     setIsEditing(true);
+    setIsAddingPlant(false);
+    setIsEditingPlant(false);
   };
 
   const markAllNotificationsAsRead = async () => {
@@ -182,6 +200,13 @@ const UserProfilePage = () => {
   }
 
   const unreadNotificationsCount = notifications.filter(n => !n.read).length;
+
+  // Function to handle PlantCard's edit button click (to be passed to PlantGrid)
+  const onPlantCardAction = (action: string, plantId: string) => {
+    if (action === 'edit') {
+      handleEditPlant(plantId);
+    }
+  };
 
   return (
     <Layout>
@@ -257,6 +282,18 @@ const UserProfilePage = () => {
               onSaved={() => setIsAddingPlant(false)}
               onCancel={() => setIsAddingPlant(false)}
             />
+          ) : isEditingPlant && selectedPlantId ? (
+            <PlantEditForm 
+              plantId={selectedPlantId}
+              onSaved={() => {
+                setIsEditingPlant(false);
+                setSelectedPlantId(null);
+              }}
+              onCancel={() => {
+                setIsEditingPlant(false);
+                setSelectedPlantId(null);
+              }}
+            />
           ) : (
             <Tabs defaultValue="plants" className="space-y-6">
               <div className="flex justify-between items-center">
@@ -302,6 +339,8 @@ const UserProfilePage = () => {
                     <PlantGrid
                       plants={availablePlants}
                       emptyMessage="You don't have any plants available for exchange yet. Add your first plant!"
+                      showActions={true}
+                      onAction={onPlantCardAction}
                     />
                   </TabsContent>
 
@@ -309,6 +348,8 @@ const UserProfilePage = () => {
                     <PlantGrid
                       plants={exchangedPlants}
                       emptyMessage="You haven't completed any exchanges yet."
+                      showActions={true}
+                      onAction={onPlantCardAction}
                     />
                   </TabsContent>
                 </Tabs>
