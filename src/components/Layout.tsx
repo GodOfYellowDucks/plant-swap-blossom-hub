@@ -54,7 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               <span className="flex items-center gap-1">
                 <Home className="h-4 w-4" />
-                Home
+                На главную
               </span>
             </Link>
             
@@ -68,7 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <span className="flex items-center gap-1">
                     <UserIcon className="h-4 w-4" />
-                    My Profile
+                    Мой профиль
                   </span>
                 </Link>
                 
@@ -91,26 +91,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar>
-                        <AvatarImage src="" alt={user.email || "User"} />
+                        <AvatarImage src="" alt={user.email || "Пользователь"} />
                         <AvatarFallback>{getUserInitials()}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuLabel>Мой аккаунт</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       <UserIcon className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
+                      <span>Профиль</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       <Leaf className="mr-2 h-4 w-4" />
-                      <span>My Plants</span>
+                      <span>Мои растения</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
+                      <span>Выйти</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -118,7 +118,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             ) : (
               <Button onClick={() => navigate('/login')} variant="default" className="bg-plant-500 hover:bg-plant-600">
                 <LogIn className="mr-2 h-4 w-4" />
-                Log in
+                Войти
               </Button>
             )}
           </nav>
@@ -132,8 +132,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <footer className="bg-white py-6 mt-auto">
         <div className="container mx-auto px-4">
           <div className="text-center text-gray-500 text-sm">
-            <p>&copy; {new Date().getFullYear()} Blossom Hub. All rights reserved.</p>
-            <p className="mt-1">Connect with plant enthusiasts and grow your collection!</p>
+            <p>&copy; {new Date().getFullYear()} Blossom Hub. Все права защищены.</p>
+            <p className="mt-1">Общайтесь с любителями растений и расширяйте свою коллекцию!</p>
           </div>
         </div>
       </footer>

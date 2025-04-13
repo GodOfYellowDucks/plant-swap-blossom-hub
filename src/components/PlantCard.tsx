@@ -17,6 +17,7 @@ interface PlantCardProps {
     image_url?: string;
     status?: string;
     user_id: string;
+    plant_type?: string;
   };
   showActions?: boolean;
   onAction?: (action: string, plantId: string) => void;
@@ -46,8 +47,31 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
         return 'В ожидании';
       case 'exchanged':
         return 'Обменено';
+      case 'cancelled':
+        return 'Отменено';
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
+
+  const getPlantTypeText = (type?: string) => {
+    if (!type) return '';
+    
+    switch (type) {
+      case 'indoor': return 'Комнатное';
+      case 'outdoor': return 'Уличное';
+      case 'succulent': return 'Суккулент';
+      case 'herb': return 'Трава';
+      case 'vegetable': return 'Овощ';
+      case 'fruit': return 'Фрукт';
+      case 'cactus': return 'Кактус';
+      case 'flower': return 'Цветок';
+      case 'tree': return 'Дерево';
+      case 'shrub': return 'Кустарник';
+      case 'vine': return 'Лиана';
+      case 'aquatic': return 'Водное';
+      case 'other': return 'Другое';
+      default: return type;
     }
   };
 
@@ -75,7 +99,7 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
       
       {plant.status && plant.status !== 'available' && (
         <div className="absolute top-2 right-2">
-          <Badge variant={plant.status === 'exchanged' ? 'success' : 'default'}>
+          <Badge variant={plant.status === 'exchanged' ? 'success' : (plant.status === 'cancelled' ? 'destructive' : 'default')}>
             {getStatusText(plant.status)}
           </Badge>
         </div>
@@ -102,8 +126,14 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
           {plant.subspecies && <span> ({plant.subspecies})</span>}
         </p>
         
+        {plant.plant_type && (
+          <p className="mt-1 text-xs">
+            <span className="font-medium">Тип:</span> {getPlantTypeText(plant.plant_type)}
+          </p>
+        )}
+        
         {plant.location && (
-          <div className="mt-2 flex items-center">
+          <div className="mt-1 flex items-center">
             <MapPin className="mr-1 h-3 w-3" />
             <span className="line-clamp-1">{plant.location}</span>
           </div>

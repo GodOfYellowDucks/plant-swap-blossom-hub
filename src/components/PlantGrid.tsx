@@ -14,11 +14,12 @@ interface PlantGridProps {
     image_url?: string;
     status?: string;
     user_id: string;
+    plant_type?: string;
   }>;
   emptyMessage?: string;
   showActions?: boolean;
   onAction?: (action: string, plantId: string) => void;
-  // Новые props для выбора растений
+  // Props для выбора растений
   selectable?: boolean;
   selectedPlantIds?: string[];
   onPlantSelect?: (plantId: string, selected: boolean) => void;

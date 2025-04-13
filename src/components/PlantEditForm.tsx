@@ -17,15 +17,35 @@ import {
 } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Upload, X, Trash2 } from 'lucide-react';
+import { Loader2, Upload, X, Trash2, Search } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+// Типы растений
+const plantTypes = [
+  { value: 'indoor', label: 'Комнатные' },
+  { value: 'outdoor', label: 'Уличные' },
+  { value: 'succulent', label: 'Суккуленты' },
+  { value: 'herb', label: 'Травы' },
+  { value: 'vegetable', label: 'Овощи' },
+  { value: 'fruit', label: 'Фрукты' },
+  { value: 'cactus', label: 'Кактусы' },
+  { value: 'flower', label: 'Цветы' },
+  { value: 'tree', label: 'Деревья' },
+  { value: 'shrub', label: 'Кустарники' },
+  { value: 'vine', label: 'Лианы' },
+  { value: 'aquatic', label: 'Водные' },
+  { value: 'other', label: 'Другое' },
+];
 
 const plantFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters.").max(50),
-  species: z.string().min(2, "Species must be at least 2 characters.").max(50),
+  name: z.string().min(2, "Название должно содержать минимум 2 символа.").max(50),
+  species: z.string().min(2, "Вид должен содержать минимум 2 символа.").max(50),
   subspecies: z.string().max(50).optional(),
-  location: z.string().min(2, "Location must be at least 2 characters.").max(50),
-  description: z.string().max(500, "Description must be less than 500 characters.").optional(),
+  location: z.string().min(2, "Местоположение должно содержать минимум 2 символа.").max(50),
+  description: z.string().max(500, "Описание должно быть меньше 500 символов.").optional(),
+  plant_type: z.string().min(1, "Выберите тип растения"),
 });
 
 type PlantFormValues = z.infer<typeof plantFormSchema>;
@@ -47,6 +67,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [plant, setPlant] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [openTypePopover, setOpenTypePopover] = useState(false);
 
   const form = useForm<PlantFormValues>({
     resolver: zodResolver(plantFormSchema),
@@ -56,6 +77,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
       subspecies: "",
       location: "",
       description: "",
+      plant_type: "",
     },
   });
 
@@ -87,13 +109,14 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             subspecies: data.subspecies || "",
             location: data.location || "",
             description: data.description || "",
+            plant_type: data.plant_type || "other",
           });
         }
       } catch (error) {
-        console.error('Error loading plant:', error);
+        console.error('Ошибка загрузки растения:', error);
         toast({
-          title: "Error",
-          description: "Failed to load plant data. Please try again.",
+          title: "Ошибка",
+          description: "Не удалось загрузить данные о растении. Пожалуйста, попробуйте снова.",
           variant: "destructive",
         });
       } finally {
@@ -132,12 +155,12 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
     setUploadError(null);
     
     if (!file.type.startsWith('image/')) {
-      setUploadError("Please upload an image file (JPEG, PNG, etc.)");
+      setUploadError("Пожалуйста, загрузите файл изображения (JPEG, PNG и т.д.)");
       return;
     }
     
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError("File size must be less than 5MB");
+      setUploadError("Размер файла должен быть меньше 5MB");
       return;
     }
     
@@ -177,7 +200,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
         });
       
       if (uploadError) {
-        console.error('Upload error details:', uploadError);
+        console.error('Ошибка загрузки:', uploadError);
         throw uploadError;
       }
       
@@ -188,7 +211,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
       
       return urlData.publicUrl;
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Ошибка загрузки изображения:', error);
       throw error;
     }
   };
@@ -196,8 +219,8 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
   const onSubmit = async (values: PlantFormValues) => {
     if (!user || !plantId) {
       toast({
-        title: "Error",
-        description: "You must be logged in to edit a plant.",
+        title: "Ошибка",
+        description: "Вы должны быть авторизованы для редактирования растения.",
         variant: "destructive",
       });
       return;
@@ -225,26 +248,27 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
           location: values.location,
           description: values.description || null,
           image_url: plantImageUrl,
+          plant_type: values.plant_type,
         })
         .eq('id', plantId)
         .eq('user_id', user.id);
 
       if (updateError) {
-        console.error('Update error details:', updateError);
+        console.error('Ошибка обновления:', updateError);
         throw updateError;
       }
       
       toast({
-        title: "Plant Updated",
-        description: "Your plant has been updated successfully.",
+        title: "Растение обновлено",
+        description: "Данные о вашем растении успешно обновлены.",
       });
       
       onSaved();
     } catch (error) {
-      console.error('Error updating plant:', error);
+      console.error('Ошибка обновления растения:', error);
       toast({
-        title: "Error",
-        description: "Failed to update plant. Please try again.",
+        title: "Ошибка",
+        description: "Не удалось обновить данные растения. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
     } finally {
@@ -267,16 +291,16 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
       if (error) throw error;
       
       toast({
-        title: "Plant Deleted",
-        description: "Your plant has been deleted successfully.",
+        title: "Растение удалено",
+        description: "Ваше растение успешно удалено.",
       });
       
       onSaved();
     } catch (error) {
-      console.error('Error deleting plant:', error);
+      console.error('Ошибка удаления растения:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete plant. Please try again.",
+        title: "Ошибка",
+        description: "Не удалось удалить растение. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
     } finally {
@@ -296,20 +320,20 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
   if (!plant && !isLoading) {
     return (
       <div className="text-center py-8">
-        <h2 className="text-xl font-semibold text-red-600">Plant Not Found</h2>
-        <p className="mt-2 text-gray-600">This plant could not be found or you don't have permission to edit it.</p>
-        <Button onClick={onCancel} className="mt-4">Go Back</Button>
+        <h2 className="text-xl font-semibold text-red-600">Растение не найдено</h2>
+        <p className="mt-2 text-gray-600">Это растение не найдено или у вас нет прав для его редактирования.</p>
+        <Button onClick={onCancel} className="mt-4">Назад</Button>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-6">Edit Plant</h2>
+      <h2 className="text-xl font-semibold mb-6">Редактировать растение</h2>
       
-      {/* Plant Image Upload */}
+      {/* Загрузка изображения растения */}
       <div className="mb-6">
-        <p className="text-sm font-medium mb-2">Plant Image</p>
+        <p className="text-sm font-medium mb-2">Изображение растения</p>
         <div 
           className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
             isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300 hover:border-plant-400'
@@ -322,7 +346,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             <div className="relative">
               <img 
                 src={imageUrl} 
-                alt="Plant preview" 
+                alt="Предпросмотр растения" 
                 className="mx-auto max-h-48 rounded-md object-cover"
               />
               <Button 
@@ -337,8 +361,8 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
           ) : (
             <div className="py-8 flex flex-col items-center">
               <Upload className="h-10 w-10 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-600">Drag and drop an image here, or click to select</p>
-              <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP up to 5MB</p>
+              <p className="text-sm text-gray-600">Перетащите изображение сюда или нажмите для выбора</p>
+              <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP до 5MB</p>
             </div>
           )}
           <input 
@@ -360,9 +384,9 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Plant Name</FormLabel>
+                <FormLabel>Название растения</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., Swiss Cheese Plant" {...field} />
+                  <Input placeholder="Например, Монстера" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -374,9 +398,9 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             name="species"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Species</FormLabel>
+                <FormLabel>Вид</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., Monstera Deliciosa" {...field} />
+                  <Input placeholder="Например, Monstera Deliciosa" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -388,10 +412,57 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             name="subspecies"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Subspecies (optional)</FormLabel>
+                <FormLabel>Подвид (необязательно)</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., Variegata" {...field} />
+                  <Input placeholder="Например, Variegata" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="plant_type"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Тип растения</FormLabel>
+                <Popover open={openTypePopover} onOpenChange={setOpenTypePopover}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                      >
+                        {field.value
+                          ? plantTypes.find((type) => type.value === field.value)?.label
+                          : "Выберите тип растения"}
+                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Поиск типа растения..." />
+                      <CommandEmpty>Тип не найден</CommandEmpty>
+                      <CommandGroup>
+                        {plantTypes.map((type) => (
+                          <CommandItem
+                            key={type.value}
+                            value={type.value}
+                            onSelect={(currentValue) => {
+                              field.onChange(currentValue);
+                              setOpenTypePopover(false);
+                            }}
+                          >
+                            {type.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
@@ -402,9 +473,9 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             name="location"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Location</FormLabel>
+                <FormLabel>Местоположение</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., San Francisco, CA" {...field} />
+                  <Input placeholder="Например, Москва" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -416,10 +487,10 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Description (optional)</FormLabel>
+                <FormLabel>Описание (необязательно)</FormLabel>
                 <FormControl>
                   <Textarea 
-                    placeholder="Describe your plant, its condition, care requirements, etc." 
+                    placeholder="Опишите ваше растение, его состояние, требования по уходу и т.д." 
                     className="resize-none" 
                     {...field} 
                   />
@@ -439,51 +510,51 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             >
               {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
               <Trash2 className="h-4 w-4" />
-              Delete Plant
+              Удалить растение
             </Button>
             
             <div className="flex space-x-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" type="button">Cancel</Button>
+                  <Button variant="outline" type="button">Отмена</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel Editing Plant?</AlertDialogTitle>
+                    <AlertDialogTitle>Отменить редактирование?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to cancel? Your changes will not be saved.
+                      Вы уверены, что хотите отменить? Ваши изменения не будут сохранены.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Continue Editing</AlertDialogCancel>
-                    <AlertDialogAction onClick={onCancel}>Yes, Cancel</AlertDialogAction>
+                    <AlertDialogCancel>Продолжить редактирование</AlertDialogCancel>
+                    <AlertDialogAction onClick={onCancel}>Да, отменить</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
               
               <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
+                Сохранить изменения
               </Button>
             </div>
           </div>
         </form>
       </Form>
       
-      {/* Delete Confirmation Dialog */}
+      {/* Диалог подтверждения удаления */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Plant?</AlertDialogTitle>
+            <AlertDialogTitle>Удалить растение?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this plant? This action cannot be undone.
+              Вы уверены, что хотите удалить это растение? Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
+              Удалить
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

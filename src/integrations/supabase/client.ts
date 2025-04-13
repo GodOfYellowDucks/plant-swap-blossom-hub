@@ -19,20 +19,30 @@ export const ensureStorageBuckets = async () => {
     
     // Проверяем хранилище для растений
     if (!buckets?.some(bucket => bucket.name === 'plants')) {
-      await supabase.storage.createBucket('plants', {
+      const { error } = await supabase.storage.createBucket('plants', {
         public: true,
         fileSizeLimit: 10485760, // 10MB
       });
-      console.log('Создано хранилище для растений');
+      
+      if (error) {
+        console.error('Ошибка при создании хранилища для растений:', error);
+      } else {
+        console.log('Создано хранилище для растений');
+      }
     }
     
     // Проверяем хранилище для аватаров
     if (!buckets?.some(bucket => bucket.name === 'avatars')) {
-      await supabase.storage.createBucket('avatars', {
+      const { error } = await supabase.storage.createBucket('avatars', {
         public: true,
         fileSizeLimit: 5242880, // 5MB
       });
-      console.log('Создано хранилище для аватаров');
+      
+      if (error) {
+        console.error('Ошибка при создании хранилища для аватаров:', error);
+      } else {
+        console.log('Создано хранилище для аватаров');
+      }
     }
     
     return true;
