@@ -18,7 +18,7 @@ interface PlantGridProps {
   emptyMessage?: string;
   showActions?: boolean;
   onAction?: (action: string, plantId: string) => void;
-  // New selection-related props
+  // Новые props для выбора растений
   selectable?: boolean;
   selectedPlantIds?: string[];
   onPlantSelect?: (plantId: string, selected: boolean) => void;
@@ -26,7 +26,7 @@ interface PlantGridProps {
 
 const PlantGrid = ({ 
   plants, 
-  emptyMessage = "No plants found.", 
+  emptyMessage = "Растения не найдены.", 
   showActions = false,
   onAction,
   selectable = false,
@@ -66,7 +66,7 @@ const PlantGrid = ({
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
-                    <span className="text-xs">No image</span>
+                    <span className="text-xs">Нет изображения</span>
                   </div>
                 )}
                 

@@ -38,6 +38,19 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'Доступно';
+      case 'pending':
+        return 'В ожидании';
+      case 'exchanged':
+        return 'Обменено';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
+
   return (
     <Card 
       className="group overflow-hidden transition-all hover:shadow-md cursor-pointer relative"
@@ -55,7 +68,7 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
-            <span className="text-xs">No image</span>
+            <span className="text-xs">Нет изображения</span>
           </div>
         )}
       </div>
@@ -63,7 +76,7 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
       {plant.status && plant.status !== 'available' && (
         <div className="absolute top-2 right-2">
           <Badge variant={plant.status === 'exchanged' ? 'success' : 'default'}>
-            {plant.status.charAt(0).toUpperCase() + plant.status.slice(1)}
+            {getStatusText(plant.status)}
           </Badge>
         </div>
       )}

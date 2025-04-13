@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -20,11 +21,11 @@ import { Loader2, Upload, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const plantFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters.").max(50),
-  species: z.string().min(2, "Species must be at least 2 characters.").max(50),
+  name: z.string().min(2, "Название должно содержать минимум 2 символа.").max(50),
+  species: z.string().min(2, "Вид должен содержать минимум 2 символа.").max(50),
   subspecies: z.string().max(50).optional(),
-  location: z.string().min(2, "Location must be at least 2 characters.").max(50),
-  description: z.string().max(500, "Description must be less than 500 characters.").optional(),
+  location: z.string().min(2, "Местоположение должно содержать минимум 2 символа.").max(50),
+  description: z.string().max(500, "Описание должно быть меньше 500 символов.").optional(),
 });
 
 type PlantFormValues = z.infer<typeof plantFormSchema>;
@@ -38,7 +39,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Ensure storage buckets exist when component mounts
+    // Убедимся, что хранилище существует при монтировании компонента
     ensureStorageBuckets();
   }, []);
 
@@ -81,12 +82,12 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     setUploadError(null);
     
     if (!file.type.startsWith('image/')) {
-      setUploadError("Please upload an image file (JPEG, PNG, etc.)");
+      setUploadError("Пожалуйста, загрузите файл изображения (JPEG, PNG и т.д.)");
       return;
     }
     
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError("File size must be less than 5MB");
+      setUploadError("Размер файла должен быть меньше 5MB");
       return;
     }
     
@@ -110,14 +111,14 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     if (!imageFile || !user) return null;
     
     try {
-      // Make sure the bucket exists first
+      // Убедимся, что хранилище существует
       await ensureStorageBuckets();
       
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
       
-      // Upload image to storage
+      // Загрузка изображения в хранилище
       const { error: uploadError, data } = await supabase.storage
         .from('plants')
         .upload(filePath, imageFile, {
@@ -126,18 +127,18 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
         });
       
       if (uploadError) {
-        console.error('Upload error details:', uploadError);
+        console.error('Ошибка загрузки:', uploadError);
         throw uploadError;
       }
       
-      // Get public URL
+      // Получение публичного URL
       const { data: urlData } = supabase.storage
         .from('plants')
         .getPublicUrl(filePath);
       
       return urlData.publicUrl;
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Ошибка загрузки изображения:', error);
       throw error;
     }
   };
@@ -145,8 +146,8 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
   const onSubmit = async (values: PlantFormValues) => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "You must be logged in to add a plant.",
+        title: "Ошибка",
+        description: "Вы должны быть авторизованы, чтобы добавить растение.",
         variant: "destructive",
       });
       return;
@@ -156,12 +157,12 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     let plantImageUrl = null;
 
     try {
-      // Upload image if provided
+      // Загрузка изображения, если оно предоставлено
       if (imageFile) {
         plantImageUrl = await uploadImage();
       }
 
-      // Insert new plant
+      // Добавление нового растения
       const { error: insertError } = await supabase
         .from('plants')
         .insert({
@@ -176,21 +177,21 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
         });
 
       if (insertError) {
-        console.error('Insert error details:', insertError);
+        console.error('Ошибка добавления:', insertError);
         throw insertError;
       }
       
       toast({
-        title: "Plant Added",
-        description: "Your plant has been added successfully.",
+        title: "Растение добавлено",
+        description: "Ваше растение успешно добавлено.",
       });
       
       onSaved();
     } catch (error) {
-      console.error('Error adding plant:', error);
+      console.error('Ошибка добавления растения:', error);
       toast({
-        title: "Error",
-        description: "Failed to add plant. Please try again.",
+        title: "Ошибка",
+        description: "Не удалось добавить растение. Пожалуйста, попробуйте снова.",
         variant: "destructive",
       });
     } finally {
@@ -200,11 +201,11 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-6">Add New Plant</h2>
+      <h2 className="text-xl font-semibold mb-6">Добавить новое растение</h2>
       
-      {/* Plant Image Upload */}
+      {/* Загрузка изображения растения */}
       <div className="mb-6">
-        <p className="text-sm font-medium mb-2">Plant Image</p>
+        <p className="text-sm font-medium mb-2">Изображение растения</p>
         <div 
           className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
             isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300 hover:border-plant-400'
@@ -217,7 +218,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
             <div className="relative">
               <img 
                 src={imageUrl} 
-                alt="Plant preview" 
+                alt="Предпросмотр растения" 
                 className="mx-auto max-h-48 rounded-md object-cover"
               />
               <Button 
@@ -232,8 +233,8 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
           ) : (
             <div className="py-8 flex flex-col items-center">
               <Upload className="h-10 w-10 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-600">Drag and drop an image here, or click to select</p>
-              <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP up to 5MB</p>
+              <p className="text-sm text-gray-600">Перетащите изображение сюда или нажмите для выбора</p>
+              <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP до 5MB</p>
             </div>
           )}
           <input 
@@ -255,9 +256,9 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Plant Name</FormLabel>
+                <FormLabel>Название растения</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., Swiss Cheese Plant" {...field} />
+                  <Input placeholder="Например, Монстера" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -269,9 +270,9 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
             name="species"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Species</FormLabel>
+                <FormLabel>Вид</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., Monstera Deliciosa" {...field} />
+                  <Input placeholder="Например, Monstera Deliciosa" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -283,9 +284,9 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
             name="subspecies"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Subspecies (optional)</FormLabel>
+                <FormLabel>Подвид (необязательно)</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., Variegata" {...field} />
+                  <Input placeholder="Например, Variegata" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -297,9 +298,9 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
             name="location"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Location</FormLabel>
+                <FormLabel>Местоположение</FormLabel>
                 <FormControl>
-                  <Input placeholder="E.g., San Francisco, CA" {...field} />
+                  <Input placeholder="Например, Москва" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -311,10 +312,10 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Description (optional)</FormLabel>
+                <FormLabel>Описание (необязательно)</FormLabel>
                 <FormControl>
                   <Textarea 
-                    placeholder="Describe your plant, its condition, care requirements, etc." 
+                    placeholder="Опишите ваше растение, его состояние, требования по уходу и т.д." 
                     className="resize-none" 
                     {...field} 
                   />
@@ -327,25 +328,25 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
           <div className="flex justify-end space-x-2 pt-4">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" type="button">Cancel</Button>
+                <Button variant="outline" type="button">Отмена</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Adding Plant?</AlertDialogTitle>
+                  <AlertDialogTitle>Отменить добавление растения?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to cancel? Your plant information will not be saved.
+                    Вы уверены, что хотите отменить? Информация о вашем растении не будет сохранена.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Continue Adding</AlertDialogCancel>
-                  <AlertDialogAction onClick={onCancel}>Yes, Cancel</AlertDialogAction>
+                  <AlertDialogCancel>Продолжить добавление</AlertDialogCancel>
+                  <AlertDialogAction onClick={onCancel}>Да, отменить</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
             
             <Button type="submit" disabled={isSaving}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Plant
+              Добавить растение
             </Button>
           </div>
         </form>

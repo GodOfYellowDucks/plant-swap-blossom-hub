@@ -40,50 +40,50 @@ const Register = () => {
             <div className="flex justify-center mb-4">
               <Leaf className="h-12 w-12 text-plant-500" />
             </div>
-            <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
+            <CardTitle className="text-2xl text-center">Создать аккаунт</CardTitle>
             <CardDescription className="text-center">
-              Join our community and start exchanging plants
+              Присоединяйтесь к нашему сообществу и начните обмениваться растениями
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Электронная почта</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Введите вашу электронную почту"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Имя пользователя</Label>
                 <Input
                   id="username"
-                  placeholder="Choose a username"
+                  placeholder="Выберите имя пользователя"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">Полное имя</Label>
                 <Input
                   id="name"
-                  placeholder="Enter your full name"
+                  placeholder="Введите ваше полное имя"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Пароль</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Create a password"
+                  placeholder="Создайте пароль"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -97,12 +97,12 @@ const Register = () => {
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Creating account...
+                    Создание аккаунта...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
                     <UserPlus className="h-4 w-4" />
-                    Sign Up
+                    Зарегистрироваться
                   </span>
                 )}
               </Button>
@@ -110,7 +110,7 @@ const Register = () => {
           </CardContent>
           <CardFooter>
             <p className="text-center text-sm text-gray-600 w-full">
-              Already have an account? <Link to="/login" className="text-plant-600 hover:text-plant-700 font-medium">Log in</Link>
+              Уже есть аккаунт? <Link to="/login" className="text-plant-600 hover:text-plant-700 font-medium">Войти</Link>
             </p>
           </CardFooter>
         </Card>

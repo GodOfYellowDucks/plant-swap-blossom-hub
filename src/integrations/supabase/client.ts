@@ -11,33 +11,33 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Helper function to ensure storage buckets exist
+// Вспомогательная функция для обеспечения существования хранилищ
 export const ensureStorageBuckets = async () => {
   try {
-    // Check if the buckets exist
+    // Проверяем существование хранилищ
     const { data: buckets } = await supabase.storage.listBuckets();
     
-    // Check for plants bucket
+    // Проверяем хранилище для растений
     if (!buckets?.some(bucket => bucket.name === 'plants')) {
       await supabase.storage.createBucket('plants', {
         public: true,
         fileSizeLimit: 10485760, // 10MB
       });
-      console.log('Created plants bucket');
+      console.log('Создано хранилище для растений');
     }
     
-    // Check for avatars bucket
+    // Проверяем хранилище для аватаров
     if (!buckets?.some(bucket => bucket.name === 'avatars')) {
       await supabase.storage.createBucket('avatars', {
         public: true,
         fileSizeLimit: 5242880, // 5MB
       });
-      console.log('Created avatars bucket');
+      console.log('Создано хранилище для аватаров');
     }
     
     return true;
   } catch (error) {
-    console.error('Error ensuring storage buckets:', error);
+    console.error('Ошибка при обеспечении хранилищ:', error);
     return false;
   }
 };
