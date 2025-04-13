@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, ensureStorageBuckets } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,6 +48,9 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
   });
 
   useEffect(() => {
+    // Ensure storage buckets exist when component mounts
+    ensureStorageBuckets();
+    
     const loadProfile = async () => {
       if (!user) return;
 
@@ -157,16 +160,23 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
     try {
       // Upload avatar if changed
       if (avatarFile) {
+        // Ensure bucket exists first
+        await ensureStorageBuckets();
+        
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
+        const filePath = `${fileName}`;
 
         // Upload image to storage
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(filePath, avatarFile);
+          .upload(filePath, avatarFile, {
+            upsert: true,
+            cacheControl: '3600'
+          });
 
         if (uploadError) {
+          console.error('Upload error details:', uploadError);
           throw uploadError;
         }
 
@@ -182,7 +192,7 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
         if (avatarPath) {
           await supabase.storage
             .from('avatars')
-            .remove([`avatars/${avatarPath}`]);
+            .remove([`${avatarPath}`]);
         }
       }
 
@@ -198,6 +208,7 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
         .eq('id', user.id);
 
       if (updateError) {
+        console.error('Update error details:', updateError);
         throw updateError;
       }
 

@@ -1,10 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, ensureStorageBuckets } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +36,11 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Ensure storage buckets exist when component mounts
+    ensureStorageBuckets();
+  }, []);
 
   const form = useForm<PlantFormValues>({
     resolver: zodResolver(plantFormSchema),
@@ -102,41 +106,12 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     setUploadError(null);
   };
 
-  const ensurePlantsBucketExists = async () => {
-    try {
-      // Check if the plants bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const plantsBucketExists = buckets?.some(bucket => bucket.name === 'plants');
-      
-      if (!plantsBucketExists) {
-        // Create the plants bucket if it doesn't exist
-        const { error } = await supabase.storage.createBucket('plants', {
-          public: true,
-          fileSizeLimit: 5242880, // 5MB
-        });
-        
-        if (error) {
-          console.error('Error creating plants bucket:', error);
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error checking/creating plants bucket:', error);
-      return false;
-    }
-  };
-
   const uploadImage = async () => {
     if (!imageFile || !user) return null;
     
     try {
-      // Ensure the plants bucket exists
-      const bucketExists = await ensurePlantsBucketExists();
-      if (!bucketExists) {
-        throw new Error('Could not create or access the plants storage bucket');
-      }
+      // Make sure the bucket exists first
+      await ensureStorageBuckets();
       
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
@@ -145,9 +120,13 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
       // Upload image to storage
       const { error: uploadError, data } = await supabase.storage
         .from('plants')
-        .upload(filePath, imageFile);
+        .upload(filePath, imageFile, {
+          upsert: true,
+          cacheControl: '3600'
+        });
       
       if (uploadError) {
+        console.error('Upload error details:', uploadError);
         throw uploadError;
       }
       
@@ -197,6 +176,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
         });
 
       if (insertError) {
+        console.error('Insert error details:', insertError);
         throw insertError;
       }
       
