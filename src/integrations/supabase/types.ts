@@ -114,6 +114,7 @@ export type Database = {
           image_url: string | null
           location: string | null
           name: string
+          plant_type: string | null
           species: string
           status: string | null
           subspecies: string | null
@@ -126,6 +127,7 @@ export type Database = {
           image_url?: string | null
           location?: string | null
           name: string
+          plant_type?: string | null
           species: string
           status?: string | null
           subspecies?: string | null
@@ -138,6 +140,7 @@ export type Database = {
           image_url?: string | null
           location?: string | null
           name?: string
+          plant_type?: string | null
           species?: string
           status?: string | null
           subspecies?: string | null
