@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -16,28 +17,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Upload, X, Trash2, Search, Link } from 'lucide-react';
+import { Loader2, Upload, X, Trash2, Link } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-
-// Типы растений
-const plantTypes = [
-  { value: 'indoor', label: 'Комнатные' },
-  { value: 'outdoor', label: 'Уличные' },
-  { value: 'succulent', label: 'Суккуленты' },
-  { value: 'herb', label: 'Травы' },
-  { value: 'vegetable', label: 'Овощи' },
-  { value: 'fruit', label: 'Фрукты' },
-  { value: 'cactus', label: 'Кактусы' },
-  { value: 'flower', label: 'Цветы' },
-  { value: 'tree', label: 'Деревья' },
-  { value: 'shrub', label: 'Кустарники' },
-  { value: 'vine', label: 'Лианы' },
-  { value: 'aquatic', label: 'Водные' },
-  { value: 'other', label: 'Другое' },
-];
 
 const plantFormSchema = z.object({
   name: z.string().min(2, "Название должно содержать минимум 2 символа.").max(50),
@@ -45,7 +27,6 @@ const plantFormSchema = z.object({
   subspecies: z.string().max(50).optional(),
   location: z.string().min(2, "Местоположение должно содержать минимум 2 символа.").max(50),
   description: z.string().max(500, "Описание должно быть меньше 500 символов.").optional(),
-  plant_type: z.string().min(1, "Выберите тип растения"),
   image_url: z.string().url("Введите корректный URL изображения").optional().or(z.literal('')),
 });
 
@@ -82,7 +63,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [plant, setPlant] = useState<Plant | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [openTypePopover, setOpenTypePopover] = useState(false);
   const [activeTab, setActiveTab] = useState("upload");
 
   const form = useForm<PlantFormValues>({
@@ -93,7 +73,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
       subspecies: "",
       location: "",
       description: "",
-      plant_type: "",
       image_url: "",
     },
   });
@@ -127,7 +106,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             subspecies: data.subspecies || "",
             location: data.location || "",
             description: data.description || "",
-            plant_type: data.plant_type || "other",
             image_url: data.image_url || "",
           });
         }
@@ -255,7 +233,8 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
           location: values.location,
           description: values.description || null,
           image_url: plantImageUrl,
-          plant_type: values.plant_type,
+          // Сохраняем существующий plant_type или устанавливаем 'other' если его нет
+          plant_type: plant?.plant_type || 'other',
         })
         .eq('id', plantId)
         .eq('user_id', user.id);
@@ -488,53 +467,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
                 <FormControl>
                   <Input placeholder="Например, Variegata" {...field} />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="plant_type"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Тип растения</FormLabel>
-                <Popover open={openTypePopover} onOpenChange={setOpenTypePopover}>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between"
-                      >
-                        {field.value
-                          ? plantTypes.find((type) => type.value === field.value)?.label
-                          : "Выберите тип растения"}
-                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Поиск типа растения..." />
-                      <CommandEmpty>Тип не найден</CommandEmpty>
-                      <CommandGroup>
-                        {plantTypes.map((type) => (
-                          <CommandItem
-                            key={type.value}
-                            value={type.value}
-                            onSelect={(currentValue) => {
-                              field.onChange(currentValue);
-                              setOpenTypePopover(false);
-                            }}
-                          >
-                            {type.label}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
                 <FormMessage />
               </FormItem>
             )}
