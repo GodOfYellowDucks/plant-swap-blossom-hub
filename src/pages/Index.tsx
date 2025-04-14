@@ -11,7 +11,6 @@ const Index = () => {
   const [plants, setPlants] = useState<any[]>([]);
   const [filteredPlants, setFilteredPlants] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [plantType, setPlantType] = useState('all');
   const [location, setLocation] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,11 +58,6 @@ const Index = () => {
         );
       }
       
-      // Применение фильтра типа растения
-      if (plantType !== 'all') {
-        result = result.filter(plant => plant.plant_type === plantType);
-      }
-      
       // Применение фильтра местоположения
       if (location) {
         result = result.filter(
@@ -75,11 +69,10 @@ const Index = () => {
     };
 
     applyFilters();
-  }, [searchTerm, plantType, location, plants]);
+  }, [searchTerm, location, plants]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setPlantType('all');
     setLocation('');
   };
 
@@ -98,8 +91,6 @@ const Index = () => {
       <FilterBar
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
-        plantType={plantType}
-        setPlantType={setPlantType}
         location={location}
         setLocation={setLocation}
         onReset={handleResetFilters}

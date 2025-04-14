@@ -17,7 +17,6 @@ interface PlantCardProps {
     image_url?: string;
     status?: string;
     user_id: string;
-    plant_type?: string;
   };
   showActions?: boolean;
   onAction?: (action: string, plantId: string) => void;
@@ -51,27 +50,6 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
         return 'Отменено';
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
-    }
-  };
-
-  const getPlantTypeText = (type?: string) => {
-    if (!type) return '';
-    
-    switch (type) {
-      case 'indoor': return 'Комнатное';
-      case 'outdoor': return 'Уличное';
-      case 'succulent': return 'Суккулент';
-      case 'herb': return 'Трава';
-      case 'vegetable': return 'Овощ';
-      case 'fruit': return 'Фрукт';
-      case 'cactus': return 'Кактус';
-      case 'flower': return 'Цветок';
-      case 'tree': return 'Дерево';
-      case 'shrub': return 'Кустарник';
-      case 'vine': return 'Лиана';
-      case 'aquatic': return 'Водное';
-      case 'other': return 'Другое';
-      default: return type;
     }
   };
 
@@ -125,12 +103,6 @@ const PlantCard = ({ plant, showActions = false, onAction }: PlantCardProps) => 
           {plant.species}
           {plant.subspecies && <span> ({plant.subspecies})</span>}
         </p>
-        
-        {plant.plant_type && (
-          <p className="mt-1 text-xs">
-            <span className="font-medium">Тип:</span> {getPlantTypeText(plant.plant_type)}
-          </p>
-        )}
         
         {plant.location && (
           <div className="mt-1 flex items-center">
