@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase, ensureStorageBuckets } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Upload, X, Trash2, Search } from 'lucide-react';
+import { Loader2, Upload, X, Trash2, Search, Link } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -46,6 +47,7 @@ const plantFormSchema = z.object({
   location: z.string().min(2, "Местоположение должно содержать минимум 2 символа.").max(50),
   description: z.string().max(500, "Описание должно быть меньше 500 символов.").optional(),
   plant_type: z.string().min(1, "Выберите тип растения"),
+  image_url: z.string().url("Введите корректный URL изображения").optional().or(z.literal('')),
 });
 
 type PlantFormValues = z.infer<typeof plantFormSchema>;
@@ -68,6 +70,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
   const [plant, setPlant] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [openTypePopover, setOpenTypePopover] = useState(false);
+  const [activeTab, setActiveTab] = useState("upload");
 
   const form = useForm<PlantFormValues>({
     resolver: zodResolver(plantFormSchema),
@@ -78,13 +81,11 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
       location: "",
       description: "",
       plant_type: "",
+      image_url: "",
     },
   });
 
   useEffect(() => {
-    // Ensure storage buckets exist when component mounts
-    ensureStorageBuckets();
-    
     const loadPlant = async () => {
       if (!plantId || !user) return;
       
@@ -103,6 +104,11 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
           setPlant(data);
           setImageUrl(data.image_url);
           
+          // Определяем, какую вкладку установить по-умолчанию
+          if (data.image_url && data.image_url.startsWith('http')) {
+            setActiveTab("url");
+          }
+          
           form.reset({
             name: data.name,
             species: data.species,
@@ -110,6 +116,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
             location: data.location || "",
             description: data.description || "",
             plant_type: data.plant_type || "other",
+            image_url: data.image_url || "",
           });
         }
       } catch (error) {
@@ -178,43 +185,32 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
     setImageFile(null);
     setImageUrl(null);
     setUploadError(null);
+    form.setValue("image_url", "");
+  };
+
+  const handleImageUrlChange = (url: string) => {
+    form.setValue("image_url", url);
+    if (url) {
+      setImageUrl(url);
+      setImageFile(null);
+    } else {
+      setImageUrl(null);
+    }
   };
 
   const uploadImage = async () => {
-    if (!imageFile || !user) return null;
-    
-    try {
-      // Make sure the bucket exists first
-      await ensureStorageBuckets();
-      
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-      
-      // Upload image to storage
-      const { error: uploadError, data } = await supabase.storage
-        .from('plants')
-        .upload(filePath, imageFile, {
-          upsert: true,
-          cacheControl: '3600'
-        });
-      
-      if (uploadError) {
-        console.error('Ошибка загрузки:', uploadError);
-        throw uploadError;
-      }
-      
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('plants')
-        .getPublicUrl(filePath);
-      
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error('Ошибка загрузки изображения:', error);
-      throw error;
-    }
+    // Функция-заглушка, теперь мы не будем загружать файлы на сервер
+    return null;
   };
+
+  // При переключении вкладок очищаем предыдущие данные
+  useEffect(() => {
+    if (activeTab === "upload") {
+      form.setValue("image_url", "");
+    } else {
+      setImageFile(null);
+    }
+  }, [activeTab, form]);
 
   const onSubmit = async (values: PlantFormValues) => {
     if (!user || !plantId) {
@@ -230,12 +226,16 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
     let plantImageUrl = plant.image_url;
 
     try {
-      // Upload new image if provided
-      if (imageFile) {
-        plantImageUrl = await uploadImage();
-      } else if (imageUrl === null && plant.image_url) {
-        // If image was removed, set to null
-        plantImageUrl = null;
+      // Определяем URL изображения на основе активной вкладки
+      if (activeTab === "url") {
+        plantImageUrl = values.image_url || null;
+      } else if (activeTab === "upload") {
+        if (imageFile) {
+          // Заглушка для загрузки файлов
+          plantImageUrl = null;
+        } else if (imageUrl === null) {
+          plantImageUrl = null;
+        }
       }
 
       // Update plant
@@ -334,44 +334,110 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
       {/* Загрузка изображения растения */}
       <div className="mb-6">
         <p className="text-sm font-medium mb-2">Изображение растения</p>
-        <div 
-          className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-            isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300 hover:border-plant-400'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {imageUrl ? (
-            <div className="relative">
-              <img 
-                src={imageUrl} 
-                alt="Предпросмотр растения" 
-                className="mx-auto max-h-48 rounded-md object-cover"
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="upload" className="flex-1">Загрузить из файла</TabsTrigger>
+            <TabsTrigger value="url" className="flex-1">Ссылка на изображение</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upload">
+            <div 
+              className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300 hover:border-plant-400'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {imageUrl && activeTab === "upload" ? (
+                <div className="relative">
+                  <img 
+                    src={imageUrl} 
+                    alt="Предпросмотр растения" 
+                    className="mx-auto max-h-48 rounded-md object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg';
+                      setUploadError("Не удалось загрузить изображение. Проверьте URL.");
+                    }}
+                  />
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="absolute top-2 right-2 h-8 w-8 p-0"
+                    onClick={removeImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="py-8 flex flex-col items-center">
+                  <Upload className="h-10 w-10 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">Перетащите изображение сюда или нажмите для выбора</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP до 5MB</p>
+                </div>
+              )}
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={handleFileSelect}
               />
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                className="absolute top-2 right-2 h-8 w-8 p-0"
-                onClick={removeImage}
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
-          ) : (
-            <div className="py-8 flex flex-col items-center">
-              <Upload className="h-10 w-10 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-600">Перетащите изображение сюда или нажмите для выбора</p>
-              <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP до 5MB</p>
+          </TabsContent>
+          
+          <TabsContent value="url">
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="image_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL изображения</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input 
+                          placeholder="https://example.com/image.jpg" 
+                          {...field} 
+                          onChange={(e) => {
+                            field.onChange(e);
+                            handleImageUrlChange(e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      {field.value && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleImageUrlChange("")}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {imageUrl && activeTab === "url" && (
+                <div className="mt-4 border rounded-md overflow-hidden">
+                  <img 
+                    src={imageUrl} 
+                    alt="Предпросмотр по URL" 
+                    className="mx-auto max-h-48 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg';
+                      setUploadError("Не удалось загрузить изображение. Проверьте URL.");
+                    }}
+                  />
+                </div>
+              )}
             </div>
-          )}
-          <input 
-            type="file" 
-            accept="image/*" 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleFileSelect}
-          />
-        </div>
+          </TabsContent>
+        </Tabs>
+        
         {uploadError && (
           <p className="mt-2 text-sm text-red-500">{uploadError}</p>
         )}

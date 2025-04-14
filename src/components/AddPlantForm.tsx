@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase, ensureStorageBuckets } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
@@ -17,9 +18,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Upload, X, Search } from 'lucide-react';
+import { Loader2, Upload, X, Search, Link } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -47,6 +47,7 @@ const plantFormSchema = z.object({
   location: z.string().min(2, "Местоположение должно содержать минимум 2 символа.").max(50),
   description: z.string().max(500, "Описание должно быть меньше 500 символов.").optional(),
   plant_type: z.string().min(1, "Выберите тип растения"),
+  image_url: z.string().url("Введите корректный URL изображения").optional().or(z.literal('')),
 });
 
 type PlantFormValues = z.infer<typeof plantFormSchema>;
@@ -59,11 +60,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [openTypePopover, setOpenTypePopover] = useState(false);
-
-  useEffect(() => {
-    // Убедимся, что хранилище существует при монтировании компонента
-    ensureStorageBuckets();
-  }, []);
+  const [activeTab, setActiveTab] = useState("upload");
 
   const form = useForm<PlantFormValues>({
     resolver: zodResolver(plantFormSchema),
@@ -74,6 +71,7 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
       location: "",
       description: "",
       plant_type: "",
+      image_url: "",
     },
   });
 
@@ -128,42 +126,24 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     setImageFile(null);
     setImageUrl(null);
     setUploadError(null);
+    form.setValue("image_url", "");
+  };
+
+  const handleImageUrlChange = (url: string) => {
+    form.setValue("image_url", url);
+    if (url) {
+      setImageUrl(url);
+      setImageFile(null);
+    } else {
+      setImageUrl(null);
+    }
   };
 
   const uploadImage = async () => {
     if (!imageFile || !user) return null;
     
-    try {
-      // Убедимся, что хранилище существует
-      await ensureStorageBuckets();
-      
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-      
-      // Загрузка изображения в хранилище
-      const { error: uploadError, data } = await supabase.storage
-        .from('plants')
-        .upload(filePath, imageFile, {
-          upsert: true,
-          cacheControl: '3600'
-        });
-      
-      if (uploadError) {
-        console.error('Ошибка загрузки:', uploadError);
-        throw uploadError;
-      }
-      
-      // Получение публичного URL
-      const { data: urlData } = supabase.storage
-        .from('plants')
-        .getPublicUrl(filePath);
-      
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error('Ошибка загрузки изображения:', error);
-      throw error;
-    }
+    // Возвращаем null без попытки загрузить на сервер
+    return null;
   };
 
   const onSubmit = async (values: PlantFormValues) => {
@@ -180,8 +160,14 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     let plantImageUrl = null;
 
     try {
-      // Загрузка изображения, если оно предоставлено
-      if (imageFile) {
+      // Устанавливаем URL изображения либо из поля формы, либо из загруженного файла
+      if (activeTab === "url" && values.image_url) {
+        plantImageUrl = values.image_url;
+      } else if (activeTab === "upload" && imageUrl && !imageFile) {
+        // Если есть предпросмотр URL, но нет файла, значит это URL
+        plantImageUrl = imageUrl;
+      } else if (imageFile) {
+        // Это для обратной совместимости, но по факту мы не будем загружать файлы
         plantImageUrl = await uploadImage();
       }
 
@@ -223,6 +209,16 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
     }
   };
 
+  // При переключении вкладок очищаем предыдущие данные
+  useEffect(() => {
+    if (activeTab === "upload") {
+      form.setValue("image_url", "");
+    } else {
+      setImageFile(null);
+      setImageUrl(null);
+    }
+  }, [activeTab, form]);
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-6">Добавить новое растение</h2>
@@ -230,44 +226,110 @@ const AddPlantForm = ({ onSaved, onCancel }: { onSaved: () => void, onCancel: ()
       {/* Загрузка изображения растения */}
       <div className="mb-6">
         <p className="text-sm font-medium mb-2">Изображение растения</p>
-        <div 
-          className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-            isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300 hover:border-plant-400'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {imageUrl ? (
-            <div className="relative">
-              <img 
-                src={imageUrl} 
-                alt="Предпросмотр растения" 
-                className="mx-auto max-h-48 rounded-md object-cover"
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="upload" className="flex-1">Загрузить из файла</TabsTrigger>
+            <TabsTrigger value="url" className="flex-1">Ссылка на изображение</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upload">
+            <div 
+              className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300 hover:border-plant-400'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {imageUrl && activeTab === "upload" ? (
+                <div className="relative">
+                  <img 
+                    src={imageUrl} 
+                    alt="Предпросмотр растения" 
+                    className="mx-auto max-h-48 rounded-md object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg';
+                      setUploadError("Не удалось загрузить изображение. Проверьте URL.");
+                    }}
+                  />
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="absolute top-2 right-2 h-8 w-8 p-0"
+                    onClick={removeImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="py-8 flex flex-col items-center">
+                  <Upload className="h-10 w-10 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">Перетащите изображение сюда или нажмите для выбора</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP до 5MB</p>
+                </div>
+              )}
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={handleFileSelect}
               />
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                className="absolute top-2 right-2 h-8 w-8 p-0"
-                onClick={removeImage}
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
-          ) : (
-            <div className="py-8 flex flex-col items-center">
-              <Upload className="h-10 w-10 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-600">Перетащите изображение сюда или нажмите для выбора</p>
-              <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP до 5MB</p>
+          </TabsContent>
+          
+          <TabsContent value="url">
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="image_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL изображения</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input 
+                          placeholder="https://example.com/image.jpg" 
+                          {...field} 
+                          onChange={(e) => {
+                            field.onChange(e);
+                            handleImageUrlChange(e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      {field.value && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleImageUrlChange("")}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {imageUrl && activeTab === "url" && (
+                <div className="mt-4 border rounded-md overflow-hidden">
+                  <img 
+                    src={imageUrl} 
+                    alt="Предпросмотр по URL" 
+                    className="mx-auto max-h-48 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg';
+                      setUploadError("Не удалось загрузить изображение. Проверьте URL.");
+                    }}
+                  />
+                </div>
+              )}
             </div>
-          )}
-          <input 
-            type="file" 
-            accept="image/*" 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleFileSelect}
-          />
-        </div>
+          </TabsContent>
+        </Tabs>
+        
         {uploadError && (
           <p className="mt-2 text-sm text-red-500">{uploadError}</p>
         )}

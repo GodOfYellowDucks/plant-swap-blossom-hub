@@ -19,7 +19,7 @@ interface PlantGridProps {
   emptyMessage?: string;
   showActions?: boolean;
   onAction?: (action: string, plantId: string) => void;
-  // Props для выбора растений
+  // Пропсы для выбора растений
   selectable?: boolean;
   selectedPlantIds?: string[];
   onPlantSelect?: (plantId: string, selected: boolean) => void;
