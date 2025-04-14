@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,15 @@ const Register = () => {
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const navigate = useNavigate();
+
+  // Перенаправление на главную, если пользователь уже авторизован
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +38,11 @@ const Register = () => {
       setIsLoading(false);
     }
   };
+
+  // Если пользователь авторизован, не показываем содержимое страницы
+  if (user) {
+    return null;
+  }
 
   return (
     <Layout>

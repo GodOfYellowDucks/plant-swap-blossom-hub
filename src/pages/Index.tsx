@@ -61,7 +61,7 @@ const Index = () => {
       
       // Применение фильтра типа растения
       if (plantType !== 'all') {
-        result = result.filter(plant => plant.type === plantType);
+        result = result.filter(plant => plant.plant_type === plantType);
       }
       
       // Применение фильтра местоположения

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,15 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // Перенаправление на главную, если пользователь уже авторизован
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +37,11 @@ const Login = () => {
     }
   };
 
+  // Если пользователь авторизован, не показываем содержимое страницы
+  if (user) {
+    return null;
+  }
+
   return (
     <Layout>
       <div className="max-w-md mx-auto">
@@ -38,32 +50,30 @@ const Login = () => {
             <div className="flex justify-center mb-4">
               <Leaf className="h-12 w-12 text-plant-500" />
             </div>
-            <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl text-center">Войти в аккаунт</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your account
+              Войдите, чтобы получить доступ к вашему профилю и растениям
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Электронная почта</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Введите вашу электронную почту"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                </div>
+                <Label htmlFor="password">Пароль</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Введите ваш пароль"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -77,12 +87,12 @@ const Login = () => {
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Logging in...
+                    Вход...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
                     <LogIn className="h-4 w-4" />
-                    Log in
+                    Войти
                   </span>
                 )}
               </Button>
@@ -90,7 +100,7 @@ const Login = () => {
           </CardContent>
           <CardFooter>
             <p className="text-center text-sm text-gray-600 w-full">
-              Don't have an account? <Link to="/register" className="text-plant-600 hover:text-plant-700 font-medium">Create one</Link>
+              Нет аккаунта? <Link to="/register" className="text-plant-600 hover:text-plant-700 font-medium">Зарегистрироваться</Link>
             </p>
           </CardFooter>
         </Card>
