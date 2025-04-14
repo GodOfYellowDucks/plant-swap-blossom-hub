@@ -117,7 +117,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
           setPlant(data as Plant);
           setImageUrl(data.image_url);
           
-          // Определяем, какую вкладку установить по-умолчанию
           if (data.image_url && data.image_url.startsWith('http')) {
             setActiveTab("url");
           }
@@ -212,7 +211,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
   };
 
   const uploadImage = async () => {
-    // Функция-заглушка, теперь мы не будем загружать файлы на сервер
     return null;
   };
 

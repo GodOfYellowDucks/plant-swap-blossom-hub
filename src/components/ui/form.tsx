@@ -58,6 +58,7 @@ const useFormField = () => {
       invalid: false,
       isDirty: false,
       isTouched: false,
+      error: undefined
     }
   }
 
