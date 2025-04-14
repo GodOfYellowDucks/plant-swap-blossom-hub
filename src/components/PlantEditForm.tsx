@@ -226,7 +226,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
     if (!user || !plantId) {
       toast({
         title: "Ошибка",
-        description: "Вы должны быть авторизованы для редактирования растения.",
+        description: "Вы должны быть авторизованы для редактирования ра��тения.",
         variant: "destructive",
       });
       return;
