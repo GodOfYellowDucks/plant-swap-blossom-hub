@@ -19,12 +19,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, Link as LinkIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50),
   location: z.string().min(2, "Location must be at least 2 characters.").max(50),
   bio: z.string().max(300, "Bio must be less than 300 characters.").optional(),
+  avatar_url: z.string().url().optional().or(z.literal('')),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -37,6 +39,7 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [avatarUploadTab, setAvatarUploadTab] = useState<'file' | 'url'>('file');
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -44,6 +47,7 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
       name: "",
       location: "",
       bio: "",
+      avatar_url: "",
     },
   });
 
@@ -73,6 +77,7 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
             name: data.name || "",
             location: data.location || "",
             bio: data.bio || "",
+            avatar_url: data.avatar_url || "",
           });
         }
       } catch (error) {
@@ -146,9 +151,16 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
     }
   };
 
+  const handleUrlChange = (url: string) => {
+    setAvatarUrl(url);
+    setAvatarFile(null);
+    form.setValue('avatar_url', url);
+  };
+
   const removeAvatar = () => {
     setAvatarFile(null);
     setAvatarUrl(null);
+    form.setValue('avatar_url', '');
   };
 
   const onSubmit = async (values: ProfileFormValues) => {
@@ -158,8 +170,12 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
     let newAvatarUrl = profile?.avatar_url;
 
     try {
-      // Upload avatar if changed
-      if (avatarFile) {
+      // If avatar URL is provided directly, use it
+      if (avatarUploadTab === 'url' && values.avatar_url) {
+        newAvatarUrl = values.avatar_url;
+      }
+      // If file upload is selected
+      else if (avatarUploadTab === 'file' && avatarFile) {
         // Ensure bucket exists first
         await ensureStorageBuckets();
         
@@ -186,13 +202,19 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
           .getPublicUrl(filePath);
 
         newAvatarUrl = urlData.publicUrl;
-      } else if (avatarUrl === null && profile?.avatar_url) {
-        // If avatar was removed, delete from storage
-        const avatarPath = profile.avatar_url.split('/').pop();
-        if (avatarPath) {
-          await supabase.storage
-            .from('avatars')
-            .remove([`${avatarPath}`]);
+      } 
+      // If avatar was removed
+      else if (avatarUrl === null && profile?.avatar_url) {
+        newAvatarUrl = null;
+        
+        // If the previous avatar was stored in Supabase, try to delete it
+        if (profile.avatar_url && profile.avatar_url.includes('supabase.co')) {
+          const avatarPath = profile.avatar_url.split('/').pop();
+          if (avatarPath) {
+            await supabase.storage
+              .from('avatars')
+              .remove([`${avatarPath}`]);
+          }
         }
       }
 
@@ -255,43 +277,63 @@ const ProfileEdit = ({ onCancel }: { onCancel: () => void }) => {
       
       {/* Avatar Upload */}
       <div className="mb-6 flex flex-col items-center">
-        <div 
-          className={`relative group cursor-pointer mb-4 ${isDragging ? 'border-2 border-dashed border-plant-500 bg-plant-50' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <Avatar className="h-24 w-24">
-            <AvatarImage src={avatarUrl || ""} />
-            <AvatarFallback className="text-xl">{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-            <Upload className="h-6 w-6 text-white" />
-          </div>
-          <input 
-            type="file" 
-            accept="image/*" 
-            className="absolute inset-0 opacity-0 cursor-pointer" 
-            onChange={handleFileSelect}
-          />
-        </div>
+        <Avatar className="h-24 w-24 mb-4">
+          <AvatarImage src={avatarUrl || ""} />
+          <AvatarFallback className="text-xl">{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
         
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">
-            {avatarUrl ? 'Change profile picture' : 'Add profile picture'}
-          </span>
-          {avatarUrl && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={removeAvatar}
-              className="h-7 w-7 p-0"
+        <Tabs value={avatarUploadTab} onValueChange={(v) => setAvatarUploadTab(v as 'file' | 'url')} className="w-full max-w-md">
+          <TabsList className="grid grid-cols-2 mb-2">
+            <TabsTrigger value="file" className="flex items-center gap-1">
+              <Upload className="h-4 w-4" /> Upload File
+            </TabsTrigger>
+            <TabsTrigger value="url" className="flex items-center gap-1">
+              <LinkIcon className="h-4 w-4" /> Image URL
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="file">
+            <div 
+              className={`relative cursor-pointer mb-2 p-4 border-2 border-dashed rounded-md flex flex-col items-center ${isDragging ? 'border-plant-500 bg-plant-50' : 'border-gray-300'}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        <p className="text-xs text-gray-400 mt-1">Click or drag and drop an image</p>
+              <Upload className="h-6 w-6 text-gray-400 mb-2" />
+              <p className="text-sm text-gray-500">Drag and drop an image here, or click to select</p>
+              <p className="text-xs text-gray-400 mt-1">Supported formats: JPEG, PNG, GIF</p>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="absolute inset-0 opacity-0 cursor-pointer" 
+                onChange={handleFileSelect}
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="url">
+            <div className="space-y-2">
+              <Input 
+                placeholder="https://example.com/image.jpg" 
+                value={form.watch('avatar_url') || ''}
+                onChange={(e) => handleUrlChange(e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">Enter a direct URL to an image (jpg, png, gif)</p>
+            </div>
+          </TabsContent>
+        </Tabs>
+        
+        {avatarUrl && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={removeAvatar}
+            className="mt-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+          >
+            <X className="h-4 w-4 mr-1" /> Remove Image
+          </Button>
+        )}
       </div>
 
       <Form {...form}>

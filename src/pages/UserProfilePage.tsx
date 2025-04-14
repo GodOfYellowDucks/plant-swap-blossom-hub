@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  Bell,
   Leaf, 
   MapPin, 
   Plus,
@@ -17,7 +16,6 @@ import {
   Repeat
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import ProfileEdit from '@/components/ProfileEdit';
 import AddPlantForm from '@/components/AddPlantForm';
@@ -30,7 +28,6 @@ const UserProfilePage = () => {
   
   const [availablePlants, setAvailablePlants] = useState<any[]>([]);
   const [exchangedPlants, setExchangedPlants] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingPlant, setIsAddingPlant] = useState(false);
@@ -77,14 +74,6 @@ const UserProfilePage = () => {
         
         if (exchangedError) throw exchangedError;
         
-        const { data: userNotifications, error: notificationsError } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        
-        if (notificationsError) throw notificationsError;
-        
         const { data: sentPending, error: sentError } = await supabase
           .from('exchange_offers')
           .select('id')
@@ -117,7 +106,6 @@ const UserProfilePage = () => {
         setProfile(profileData);
         setAvailablePlants(userAvailablePlants || []);
         setExchangedPlants(userExchangedPlants || []);
-        setNotifications(userNotifications || []);
         setPendingExchanges(totalPendingExchanges);
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -153,34 +141,6 @@ const UserProfilePage = () => {
     setIsEditingPlant(false);
   };
 
-  const markAllNotificationsAsRead = async () => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
-      
-      if (error) throw error;
-      
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
-      
-      toast({
-        title: "Notifications marked as read",
-        description: "All notifications have been marked as read.",
-      });
-    } catch (error) {
-      console.error('Error marking notifications as read:', error);
-      toast({
-        title: "Error",
-        description: "Failed to mark notifications as read.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const getUserInitials = () => {
     if (!user || !user.email) return '?';
     return user.email.charAt(0).toUpperCase();
@@ -198,8 +158,6 @@ const UserProfilePage = () => {
       </Layout>
     );
   }
-
-  const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
   // Function to handle PlantCard's edit button click (to be passed to PlantGrid)
   const onPlantCardAction = (action: string, plantId: string) => {
@@ -295,125 +253,46 @@ const UserProfilePage = () => {
               }}
             />
           ) : (
-            <Tabs defaultValue="plants" className="space-y-6">
+            <div className="space-y-6">
               <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Your Plants</h2>
+                <Button onClick={handleAddPlant} size="sm" className="gap-1">
+                  <Plus className="h-4 w-4" /> 
+                  Add Plant
+                </Button>
+              </div>
+              
+              <Tabs defaultValue="available">
                 <TabsList>
-                  <TabsTrigger value="plants" className="gap-2">
-                    <Leaf className="h-4 w-4" />
-                    My Plants
+                  <TabsTrigger value="available" className="gap-2">
+                    <Clock className="h-4 w-4" />
+                    Available
                   </TabsTrigger>
-                  <TabsTrigger value="notifications" className="gap-2">
-                    <Bell className="h-4 w-4" />
-                    Notifications
-                    {unreadNotificationsCount > 0 && (
-                      <span className="ml-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {unreadNotificationsCount}
-                      </span>
-                    )}
+                  <TabsTrigger value="exchanged" className="gap-2">
+                    <CheckCheck className="h-4 w-4" />
+                    Exchanged
                   </TabsTrigger>
                 </TabsList>
-              </div>
 
-              <TabsContent value="plants" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">Your Plants</h2>
-                  <Button onClick={handleAddPlant} size="sm" className="gap-1">
-                    <Plus className="h-4 w-4" /> 
-                    Add Plant
-                  </Button>
-                </div>
-                
-                <Tabs defaultValue="available">
-                  <TabsList>
-                    <TabsTrigger value="available" className="gap-2">
-                      <Clock className="h-4 w-4" />
-                      Available
-                    </TabsTrigger>
-                    <TabsTrigger value="exchanged" className="gap-2">
-                      <CheckCheck className="h-4 w-4" />
-                      Exchanged
-                    </TabsTrigger>
-                  </TabsList>
+                <TabsContent value="available" className="mt-4">
+                  <PlantGrid
+                    plants={availablePlants}
+                    emptyMessage="You don't have any plants available for exchange yet. Add your first plant!"
+                    showActions={true}
+                    onAction={onPlantCardAction}
+                  />
+                </TabsContent>
 
-                  <TabsContent value="available" className="mt-4">
-                    <PlantGrid
-                      plants={availablePlants}
-                      emptyMessage="You don't have any plants available for exchange yet. Add your first plant!"
-                      showActions={true}
-                      onAction={onPlantCardAction}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="exchanged" className="mt-4">
-                    <PlantGrid
-                      plants={exchangedPlants}
-                      emptyMessage="You haven't completed any exchanges yet."
-                      showActions={true}
-                      onAction={onPlantCardAction}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </TabsContent>
-
-              <TabsContent value="notifications">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Your Notifications</h2>
-                  {unreadNotificationsCount > 0 && (
-                    <Button variant="outline" size="sm" onClick={markAllNotificationsAsRead}>
-                      Mark all as read
-                    </Button>
-                  )}
-                </div>
-                
-                {notifications.length === 0 ? (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <Bell className="h-12 w-12 text-gray-300 mb-4" />
-                      <p className="text-gray-500 text-center">
-                        You're all caught up! No notifications at the moment.
-                      </p>
-                      <p className="text-gray-400 text-sm text-center mt-2">
-                        When you receive exchange offers or updates, they'll appear here.
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    <Card className="bg-plant-50 border-plant-200">
-                      <CardHeader className="p-4 pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                          <Leaf className="h-4 w-4 text-plant-500" />
-                          Welcome to Blossom Hub
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0 text-sm text-gray-600">
-                        Thank you for joining our plant exchange community! Start by adding your plants and browsing available exchanges.
-                      </CardContent>
-                    </Card>
-                    
-                    {notifications.map((notification) => (
-                      <Card 
-                        key={notification.id} 
-                        className={notification.read ? "bg-gray-50" : "border-plant-300 bg-white"}
-                      >
-                        <CardHeader className="p-4 pb-2">
-                          <CardTitle className="text-sm font-medium flex justify-between">
-                            <span>{notification.title || "Notification"}</span>
-                            {!notification.read && <span className="text-xs bg-plant-100 text-plant-800 px-2 py-0.5 rounded-full">New</span>}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0 text-sm text-gray-600">
-                          {notification.message}
-                          <div className="text-xs text-gray-400 mt-2">
-                            {new Date(notification.created_at).toLocaleDateString()}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="exchanged" className="mt-4">
+                  <PlantGrid
+                    plants={exchangedPlants}
+                    emptyMessage="You haven't completed any exchanges yet."
+                    showActions={true}
+                    onAction={onPlantCardAction}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
           )}
         </div>
       </div>

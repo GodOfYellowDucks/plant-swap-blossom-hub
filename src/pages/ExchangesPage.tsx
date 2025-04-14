@@ -364,8 +364,15 @@ const ExchangesPage = () => {
       console.log("Результат подтверждения обмена:", data);
       
       // Update plant status to 'exchanged'
-      const plantsToUpdate = [exchange.sender_plant_id, exchange.receiver_plant_id, ...(exchange.selected_plants_ids || [])];
+      const plantsToUpdate = [
+        exchange.sender_plant_id, 
+        exchange.receiver_plant_id, 
+        ...(exchange.selected_plants_ids || [])
+      ];
       
+      console.log("Обновление статуса растений:", plantsToUpdate);
+      
+      // Fixed: Update all plants to exchanged status
       for (const plantId of plantsToUpdate) {
         const { error: plantError } = await supabase
           .from('plants')
@@ -374,6 +381,11 @@ const ExchangesPage = () => {
         
         if (plantError) {
           console.error(`Ошибка при обновлении растения ${plantId}:`, plantError);
+          toast({
+            title: "Предупреждение",
+            description: `Проблема с обновлением статуса растения ${plantId}`,
+            variant: "destructive",
+          });
         }
       }
       
@@ -643,7 +655,7 @@ const ExchangesPage = () => {
         </CardContent>
       </Card>
       
-      {/* Plant selection dialog (replaces popover) */}
+      {/* Plant selection dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
