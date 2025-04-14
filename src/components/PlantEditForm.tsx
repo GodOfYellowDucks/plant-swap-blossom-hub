@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -52,6 +51,20 @@ const plantFormSchema = z.object({
 
 type PlantFormValues = z.infer<typeof plantFormSchema>;
 
+interface Plant {
+  id: string;
+  name: string;
+  species: string;
+  subspecies?: string;
+  location?: string;
+  description?: string;
+  image_url?: string;
+  status?: string;
+  user_id: string;
+  plant_type?: string;
+  created_at: string;
+}
+
 interface PlantEditFormProps {
   plantId: string;
   onSaved: () => void;
@@ -67,7 +80,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [plant, setPlant] = useState<any>(null);
+  const [plant, setPlant] = useState<Plant | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [openTypePopover, setOpenTypePopover] = useState(false);
   const [activeTab, setActiveTab] = useState("upload");
@@ -101,7 +114,7 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
         if (error) throw error;
         
         if (data) {
-          setPlant(data);
+          setPlant(data as Plant);
           setImageUrl(data.image_url);
           
           // Определяем, какую вкладку установить по-умолчанию
@@ -203,7 +216,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
     return null;
   };
 
-  // При переключении вкладок очищаем предыдущие данные
   useEffect(() => {
     if (activeTab === "upload") {
       form.setValue("image_url", "");
@@ -223,22 +235,19 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
     }
     
     setIsSaving(true);
-    let plantImageUrl = plant.image_url;
+    let plantImageUrl = plant?.image_url;
 
     try {
-      // Определяем URL изображения на основе активной вкладки
       if (activeTab === "url") {
         plantImageUrl = values.image_url || null;
       } else if (activeTab === "upload") {
         if (imageFile) {
-          // Заглушка для загрузки файлов
           plantImageUrl = null;
         } else if (imageUrl === null) {
           plantImageUrl = null;
         }
       }
 
-      // Update plant
       const { error: updateError } = await supabase
         .from('plants')
         .update({
@@ -331,7 +340,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-6">Редактировать растение</h2>
       
-      {/* Загрузка изображения растения */}
       <div className="mb-6">
         <p className="text-sm font-medium mb-2">Изображение растения</p>
         
@@ -607,7 +615,6 @@ const PlantEditForm = ({ plantId, onSaved, onCancel }: PlantEditFormProps) => {
         </form>
       </Form>
       
-      {/* Диалог подтверждения удаления */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
