@@ -48,6 +48,8 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+
+
 const ExchangesPage = () => {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [statusFilter, setStatusFilter] = useState<ExchangeStatus | 'all'>('all');
@@ -363,37 +365,43 @@ const ExchangesPage = () => {
       
       console.log("Результат подтверждения обмена:", data);
       
-      // Update plant status to 'exchanged'
+      // 1. Собираем ID всех растений без дубликатов
       const plantsToUpdate = [
-        exchange.sender_plant_id, 
-        exchange.receiver_plant_id, 
+        exchange.sender_plant_id,
+        exchange.receiver_plant_id,
         ...(exchange.selected_plants_ids || [])
-      ];
-      
-      console.log("Обновление статуса растений:", plantsToUpdate);
-      
-      // Fixed: Update all plants to exchanged status
-      for (const plantId of plantsToUpdate) {
-        const { error: plantError } = await supabase
-          .from('plants')
-          .update({ status: 'exchanged' })
-          .eq('id', plantId);
-        
-        if (plantError) {
-          console.error(`Ошибка при обновлении растения ${plantId}:`, plantError);
-          toast({
-            title: "Предупреждение",
-            description: `Проблема с обновлением статуса растения ${plantId}`,
-            variant: "destructive",
-          });
-        }
+      ].filter((id, index, arr) =>
+        id &&                        // Отсеиваем пустые значения
+        arr.indexOf(id) === index    // Удаляем дубликаты
+      );
+
+      // 2. Валидация
+      if (plantsToUpdate.length === 0) {
+        console.error("Нет растений для обновления!");
+        toast({
+          title: "Ошибка",
+          description: "Не найдены растения для обмена",
+          variant: "destructive"
+        });
+        return;
       }
-      
-      toast({
-        title: "Успех",
-        description: "Обмен подтвержден успешно!",
-        variant: "success",
-      });
+
+      // 3. Массовое обновление
+      const { error: updateError, count: updatedCount } = await supabase
+        .from('plants')
+        .update({ status: 'exchanged' })
+        .in('id', plantsToUpdate);
+
+      if (updateError) {
+        console.error("Ошибка массового обновления:", updateError);
+        toast({
+          title: "Ошибка",
+          description: `Не удалось обновить статус растений: ${updateError.message}`,
+          variant: "destructive"
+        });
+      } else {
+        console.log(`Успешно обновлено ${updatedCount} растений`);
+      }
       
       await fetchExchanges(); // Refresh exchanges list
     } catch (error) {
